@@ -1,0 +1,299 @@
+/* General styles */
+body {
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+h1, h2, h3 {
+    color: #333;
+}
+
+.problem-container {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input, select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: auto;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+button.stop {
+    background-color: #f44336;
+}
+
+button.stop:hover {
+    background-color: #d32f2f;
+}
+
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.visualization {
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    min-height: 300px;
+    background-color: #fafafa;
+    position: relative;
+}
+
+.section {
+    margin-bottom: 20px;
+}
+
+.log-container {
+    margin-top: 20px;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+}
+
+.log {
+    height: 150px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    font-family: monospace;
+    background-color: #f9f9f9;
+}
+
+/* Producer-Consumer specific styles */
+.buffer {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin: 20px 0;
+}
+
+.buffer-item {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    transition: background-color 0.3s;
+}
+
+.buffer-item.filled {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.agent {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 5px;
+    display: inline-block;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.agent.active {
+    transform: scale(1.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.producer {
+    background-color: #e3f2fd;
+    border: 1px solid #bbdefb;
+}
+
+.producer.active {
+    background-color: #bbdefb;
+}
+
+.consumer {
+    background-color: #f3e5f5;
+    border: 1px solid #e1bee7;
+}
+
+.consumer.active {
+    background-color: #e1bee7;
+}
+
+/* Readers-Writers specific styles */
+.reader {
+    background-color: #e8f5e9;
+    border: 1px solid #c8e6c9;
+}
+
+.reader.active {
+    background-color: #c8e6c9;
+}
+
+.writer {
+    background-color: #fff3e0;
+    border: 1px solid #ffe0b2;
+}
+
+.writer.active {
+    background-color: #ffe0b2;
+}
+
+.resource {
+    width: 150px;
+    height: 150px;
+    border: 2px solid #777;
+    border-radius: 5px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+}
+
+.resource.reading {
+    background-color: #c8e6c9;
+}
+
+.resource.writing {
+    background-color: #ffccbc;
+}
+
+#resource-value {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+#access-status {
+    font-size: 14px;
+    color: #666;
+}
+
+/* Dining Philosophers specific styles */
+#table-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 30px;
+    position: relative;
+    height: 300px;
+}
+
+#table {
+    width: 200px;
+    height: 200px;
+    background-color: #8d6e63;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.fork {
+    width: 8px;
+    height: 40px;
+    background-color: #9e9e9e;
+    position: absolute;
+    border-radius: 2px;
+    transform-origin: center bottom;
+    transition: background-color 0.3s;
+    top: 50%;
+    left: 50%;
+}
+
+.fork.in-use {
+    background-color: #f44336;
+}
+
+.philosopher {
+    background-color: #e1f5fe;
+    border: 1px solid #b3e5fc;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: absolute;
+    transition: background-color 0.3s;
+}
+
+.philosopher.thinking {
+    background-color: #b3e5fc;
+}
+
+.philosopher.hungry {
+    background-color: #ffecb3;
+}
+
+.philosopher.eating {
+    background-color: #c8e6c9;
+}
+
+.philosophers-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.philosopher-status {
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px;
+    text-align: center;
+    width: 100px;
+}
+
+.philosopher-status.thinking {
+    background-color: #b3e5fc;
+}
+
+.philosopher-status.hungry {
+    background-color: #ffecb3;
+}
+
+.philosopher-status.eating {
+    background-color: #c8e6c9;
+}

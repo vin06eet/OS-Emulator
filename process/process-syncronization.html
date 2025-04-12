@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classical Synchronization Problems</title>
+    <link rel="stylesheet" href="process-syncronization.css">
+</head>
+<body>
+    <h1>Classical Synchronization Problems</h1>
+    
+    <!-- Producer-Consumer Problem -->
+    <div class="problem-container">
+        <h2>Producer-Consumer Problem</h2>
+        <div class="controls">
+            <div class="control-group">
+                <label for="buffer-size">Buffer Size:</label>
+                <input type="number" id="buffer-size" min="1" max="20" value="5">
+            </div>
+            <div class="control-group">
+                <label for="producer-count">Producers:</label>
+                <input type="number" id="producer-count" min="1" max="5" value="2">
+            </div>
+            <div class="control-group">
+                <label for="consumer-count">Consumers:</label>
+                <input type="number" id="consumer-count" min="1" max="5" value="2">
+            </div>
+            <div class="control-group">
+                <label for="producer-speed">Producer Speed (ms):</label>
+                <input type="number" id="producer-speed" min="500" max="5000" step="100" value="1000">
+            </div>
+            <div class="control-group">
+                <label for="consumer-speed">Consumer Speed (ms):</label>
+                <input type="number" id="consumer-speed" min="500" max="5000" step="100" value="1500">
+            </div>
+            <button id="start-producer-consumer">Start</button>
+            <button id="stop-producer-consumer" class="stop" disabled>Stop</button>
+        </div>
+        <div class="visualization" id="producer-consumer-viz">
+            <div class="section">
+                <h3>Producers</h3>
+                <div id="producers-container"></div>
+            </div>
+            <div class="section">
+                <h3>Buffer</h3>
+                <div id="buffer-container" class="buffer"></div>
+            </div>
+            <div class="section">
+                <h3>Consumers</h3>
+                <div id="consumers-container"></div>
+            </div>
+            <div class="log-container">
+                <h3>Log</h3>
+                <div id="producer-consumer-log" class="log"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Readers-Writers Problem -->
+    <div class="problem-container">
+        <h2>Readers-Writers Problem</h2>
+        <div class="controls">
+            <div class="control-group">
+                <label for="reader-count">Readers:</label>
+                <input type="number" id="reader-count" min="1" max="10" value="3">
+            </div>
+            <div class="control-group">
+                <label for="writer-count">Writers:</label>
+                <input type="number" id="writer-count" min="1" max="5" value="2">
+            </div>
+            <div class="control-group">
+                <label for="reader-speed">Reader Speed (ms):</label>
+                <input type="number" id="reader-speed" min="500" max="5000" step="100" value="1000">
+            </div>
+            <div class="control-group">
+                <label for="writer-speed">Writer Speed (ms):</label>
+                <input type="number" id="writer-speed" min="500" max="5000" step="100" value="2000">
+            </div>
+            <div class="control-group">
+                <label for="reader-priority">Priority:</label>
+                <select id="reader-priority">
+                    <option value="reader">Reader Priority</option>
+                    <option value="writer">Writer Priority</option>
+                    <option value="fair">Fair Access</option>
+                </select>
+            </div>
+            <button id="start-readers-writers">Start</button>
+            <button id="stop-readers-writers" class="stop" disabled>Stop</button>
+        </div>
+        <div class="visualization" id="readers-writers-viz">
+            <div class="section">
+                <h3>Readers</h3>
+                <div id="readers-container"></div>
+            </div>
+            <div class="section">
+                <h3>Resource</h3>
+                <div id="resource-container" class="resource">
+                    <div id="resource-value">Initial Value</div>
+                    <div id="access-status">Not in use</div>
+                </div>
+            </div>
+            <div class="section">
+                <h3>Writers</h3>
+                <div id="writers-container"></div>
+            </div>
+            <div class="log-container">
+                <h3>Log</h3>
+                <div id="readers-writers-log" class="log"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Dining Philosophers Problem -->
+    <div class="problem-container">
+        <h2>Dining Philosophers Problem</h2>
+        <div class="controls">
+            <div class="control-group">
+                <label for="philosopher-count">Philosophers:</label>
+                <input type="number" id="philosopher-count" min="3" max="10" value="5">
+            </div>
+            <div class="control-group">
+                <label for="thinking-time">Thinking Time (ms):</label>
+                <input type="number" id="thinking-time" min="500" max="5000" step="100" value="1500">
+            </div>
+            <div class="control-group">
+                <label for="eating-time">Eating Time (ms):</label>
+                <input type="number" id="eating-time" min="500" max="5000" step="100" value="2000">
+            </div>
+            <div class="control-group">
+                <label for="deadlock-prevention">Deadlock Prevention:</label>
+                <select id="deadlock-prevention">
+                    <option value="none">None</option>
+                    <option value="resource-hierarchy">Resource Hierarchy</option>
+                    <option value="arbitrator">Arbitrator</option>
+                </select>
+            </div>
+            <button id="start-dining-philosophers">Start</button>
+            <button id="stop-dining-philosophers" class="stop" disabled>Stop</button>
+        </div>
+        <div class="visualization" id="dining-philosophers-viz">
+            <div id="table-container">
+                <div id="table"></div>
+            </div>
+            <div class="philosophers-container" id="philosophers-container"></div>
+            <div class="log-container">
+                <h3>Log</h3>
+                <div id="dining-philosophers-log" class="log"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="process-syncronization.js"></script>
+</body>
+</html>
