@@ -122,29 +122,30 @@
             <div class="algorithm-card">
                 <h2>C-SCAN (Circular SCAN)</h2>
                 <div class="card-content">
-                    <p>Similar to SCAN but serves requests only in forward direction, performing a quick return without serving. Treats cylinder as a circular list.</p>
-                    <h3>Characteristics:</h3>
+                    <p>Similar to SCAN but serves requests only in forward direction. After reaching the disk end, it quickly returns to the beginning (0) without serving any requests, and starts serving again from the beginning. This creates a circular movement pattern.</p>
+                    <h3>Working:</h3>
                     <ul>
-                        <li>Uniform waiting time distribution across cylinders</li>
-                        <li>Consistent service direction</li>
-                        <li>Increased seek time due to full sweeps</li>
-                        <li>Better request distribution than SCAN</li>
+                        <li>Head moves toward the end of disk (199) serving requests</li>
+                        <li>After reaching end, quickly returns to beginning (0)</li>
+                        <li>During return journey, no requests are served</li>
+                        <li>Starts serving again from beginning (0) onwards</li>
                     </ul>
                     <h3>Advantages:</h3>
                     <ul>
-                        <li>More uniform waiting time than SCAN</li>
-                        <li>Better for high-priority requests</li>
-                        <li>Predictable head movement pattern</li>
+                        <li>Uniform waiting time distribution for all cylinders</li>
+                        <li>Better response time than SCAN</li>
+                        <li>Avoids starvation of requests</li>
                     </ul>
                     <h3>Disadvantages:</h3>
                     <ul>
-                        <li>Longer seek times than SCAN</li>
-                        <li>Unused return sweep</li>
-                        <li>Higher average response time</li>
+                        <li>Higher seek time due to full disk traversal</li>
+                        <li>Head always moves to disk ends</li>
+                        <li>Unused return traversal increases total time</li>
                     </ul>
                     <div class="example">
-                        Example: For same sequence, total seek time = 391<br>
-                        Path: 50 → 82 → 140 → 170 → 190 → 0 → 16 → 24 → 43
+                        Example: For head at 50 and requests (82,170,43,140,24,16,190), total seek time = 391<br>
+                        Path: 50 → 82 → 140 → 170 → 190 → [199] → [0] → 16 → 24 → 43<br>
+                        Calculation: (199-50) + (199-0) + (43-0) = 149 + 199 + 43 = 391
                     </div>
                 </div>
             </div>
@@ -182,29 +183,30 @@
             <div class="algorithm-card">
                 <h2>C-LOOK</h2>
                 <div class="card-content">
-                    <p>Combines C-SCAN and LOOK principles for optimal performance, serving requests in one direction and jumping to lowest pending request without serving in reverse.</p>
-                    <h3>Characteristics:</h3>
+                    <p>Similar to LOOK algorithm but serves requests only in one direction. After reaching the highest request, it jumps to the lowest request without serving any requests in between, then continues serving in the same direction.</p>
+                    <h3>Working:</h3>
                     <ul>
-                        <li>Reduced waiting time for most requests</li>
-                        <li>No starvation of cylinders</li>
-                        <li>Efficient seek operations</li>
-                        <li>Optimized directional service</li>
+                        <li>Head moves in one direction serving requests</li>
+                        <li>Goes only until highest request (not disk end)</li>
+                        <li>Jumps to lowest request without serving</li>
+                        <li>Continues serving from lowest to highest</li>
                     </ul>
                     <h3>Advantages:</h3>
                     <ul>
                         <li>Better average response time than C-SCAN</li>
-                        <li>More efficient head movement</li>
-                        <li>Good balance of throughput and fairness</li>
+                        <li>More efficient than LOOK for uniform load</li>
+                        <li>Reduced head movement than C-SCAN</li>
                     </ul>
                     <h3>Disadvantages:</h3>
                     <ul>
                         <li>Complex implementation logic</li>
-                        <li>Overhead in tracking request boundaries</li>
-                        <li>May not be optimal for light loads</li>
+                        <li>May cause non-uniform waiting times</li>
+                        <li>Long jumps between request ends</li>
                     </ul>
                     <div class="example">
-                        Example: For same sequence, total seek time = 341<br>
-                        Path: 50 → 82 → 140 → 170 → 190 → 16 → 24 → 43
+                        Example: For head at 50 and requests (82,170,43,140,24,16,190), total seek time = 341<br>
+                        Path: 50 → 82 → 140 → 170 → 190 → [jump to 16] → 16 → 24 → 43<br>
+                        Calculation: (190-50) + (190-16) + (43-16) = 140 + 174 + 27 = 341
                     </div>
                 </div>
             </div>

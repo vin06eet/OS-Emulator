@@ -178,6 +178,7 @@ class DiskScheduler {
                 const rightRequests = remainingRequests.filter(req => req >= currentHead);
                 const leftRequests = remainingRequests.filter(req => req < currentHead);
                 
+                // First serve all requests to the right until disk end
                 rightRequests.forEach(request => {
                     const distance = Math.abs(currentHead - request);
                     seekTime += distance;
@@ -191,6 +192,7 @@ class DiskScheduler {
                     });
                 });
 
+                // Move to the end of disk (199)
                 if (currentHead !== 199) {
                     const distance = 199 - currentHead;
                     seekTime += distance;
@@ -203,15 +205,20 @@ class DiskScheduler {
                         totalSeekTime: seekTime
                     });
                 }
+
+                // Quick return to beginning (0) - add the distance but don't serve requests
+                const returnDistance = 199;  // From 199 to 0
+                seekTime += returnDistance;
                 currentHead = 0;
                 path.push(currentHead);
                 steps.push({
                     head: currentHead,
                     request: null,
-                    distance: 0,
+                    distance: returnDistance,
                     totalSeekTime: seekTime
                 });
 
+                // Then serve all requests from the beginning
                 leftRequests.forEach(request => {
                     const distance = Math.abs(currentHead - request);
                     seekTime += distance;
@@ -263,6 +270,7 @@ class DiskScheduler {
                 const rightCLook = remainingRequests.filter(req => req >= currentHead);
                 const leftCLook = remainingRequests.filter(req => req < currentHead);
                 
+                // First serve all requests to the right until highest request
                 rightCLook.forEach(request => {
                     const distance = Math.abs(currentHead - request);
                     seekTime += distance;
@@ -277,15 +285,23 @@ class DiskScheduler {
                 });
 
                 if (leftCLook.length > 0) {
-                    currentHead = leftCLook[0];
+                    // Add the distance from highest request to lowest request
+                    const highestRequest = currentHead;  // This will be the last request served
+                    const lowestRequest = Math.min(...leftCLook);
+                    const jumpDistance = highestRequest - lowestRequest;
+                    seekTime += jumpDistance;
+                    
+                    // Jump to the lowest request
+                    currentHead = lowestRequest;
                     path.push(currentHead);
                     steps.push({
                         head: currentHead,
                         request: null,
-                        distance: 0,
+                        distance: jumpDistance,
                         totalSeekTime: seekTime
                     });
 
+                    // Then serve all remaining requests from lowest to highest
                     leftCLook.forEach(request => {
                         const distance = Math.abs(currentHead - request);
                         seekTime += distance;
