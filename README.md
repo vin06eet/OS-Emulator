@@ -23,7 +23,7 @@ Extra Modules not in Lab Syllabus:
 
 ## Link To Website
 
-[OS-Emulator](github.com/vin06eet/OS-Emulator)
+[OS-Emulator](https://vin06eet.github.io/OS-Emulator/)
 
 ## Team Members
 
