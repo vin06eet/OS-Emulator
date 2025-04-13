@@ -1,785 +1,1013 @@
-// Utility functions
-function logMessage(logId, message) {
-    const log = document.getElementById(logId);
-    const timestamp = new Date().toLocaleTimeString();
-    const entry = document.createElement('div');
-    entry.textContent = `[${timestamp}] ${message}`;
-    log.appendChild(entry);
-    log.scrollTop = log.scrollHeight;
-}
+let simulationState = {
+    'producer-consumer': {
+        running: false,
+        buffer: [],
+        producers: [],
+        consumers: [],
+        mutexLock: false,
+        fullSemaphore: 0,
+        emptySemaphore: 0
+    },
+    'readers-writers': {
+        running: false,
+        readers: [],
+        writers: [],
+        readCount: 0,
+        writeCount: 0,
+        mutex: false,
+        resourceMutex: false,
+        readMutex: false,
+        writeMutex: false,
+        waitingReaders: [],
+        waitingWriters: [],
+        queue: []
+    },
+    'dining-philosophers': {
+        running: false,
+        philosophers: [],
+        forks: [],
+        mutex: false
+    }
+};
 
-function clearLog(logId) {
-    const log = document.getElementById(logId);
-    log.innerHTML = '';
+function randomBetween(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Generate a random integer between min and max (inclusive)
-function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+function addLogEntry(problemId, message, type = 'info') {
+    const logContainer = document.getElementById(`${problemId}-log`);
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry log-${type}`;
+    logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+    logContainer.appendChild(logEntry);
+    logContainer.scrollTop = logContainer.scrollHeight;
 }
 
-// 1. Producer-Consumer Problem
-class ProducerConsumerSimulation {
-    constructor() {
-        this.buffer = [];
-        this.bufferSize = 0;
-        this.producers = [];
-        this.consumers = [];
-        this.producerSpeed = 1000;
-        this.consumerSpeed = 1500;
-        this.running = false;
-        this.nextItemId = 1;
-        
-        // UI Elements
-        this.bufferContainer = document.getElementById('buffer-container');
-        this.producersContainer = document.getElementById('producers-container');
-        this.consumersContainer = document.getElementById('consumers-container');
-        
-        // Setup controls
-        document.getElementById('start-producer-consumer').addEventListener('click', () => this.start());
-        document.getElementById('stop-producer-consumer').addEventListener('click', () => this.stop());
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        const tabId = tab.getAttribute('data-tab');
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(tabId).classList.add('active');
+    });
+});
+
+// Producer Consumer
+function initProducerConsumerUI() {
+    const bufferSize = parseInt(document.getElementById('pc-buffer-size').value);
+    const producerCount = parseInt(document.getElementById('pc-producers').value);
+    const consumerCount = parseInt(document.getElementById('pc-consumers').value);
+    const bufferContainer = document.getElementById('pc-buffer');
+    bufferContainer.innerHTML = '';
+    for (let i = 0; i < bufferSize; i++) {
+        const bufferItem = document.createElement('div');
+        bufferItem.className = 'buffer-item';
+        bufferItem.id = `buffer-item-${i}`;
+        bufferItem.textContent = '';
+        bufferContainer.appendChild(bufferItem);
     }
-    
-    setup() {
-        this.bufferSize = parseInt(document.getElementById('buffer-size').value);
-        const producerCount = parseInt(document.getElementById('producer-count').value);
-        const consumerCount = parseInt(document.getElementById('consumer-count').value);
-        this.producerSpeed = parseInt(document.getElementById('producer-speed').value);
-        this.consumerSpeed = parseInt(document.getElementById('consumer-speed').value);
-        
-        // Clear previous state
-        this.buffer = [];
-        this.producers = [];
-        this.consumers = [];
-        this.bufferContainer.innerHTML = '';
-        this.producersContainer.innerHTML = '';
-        this.consumersContainer.innerHTML = '';
-        this.nextItemId = 1;
-        
-        // Create buffer UI
-        for (let i = 0; i < this.bufferSize; i++) {
-            const bufferItem = document.createElement('div');
-            bufferItem.className = 'buffer-item';
-            bufferItem.id = `buffer-item-${i}`;
-            this.bufferContainer.appendChild(bufferItem);
-        }
-        
-        // Create producers
-        for (let i = 0; i < producerCount; i++) {
-            const producer = document.createElement('div');
-            producer.className = 'agent producer';
-            producer.id = `producer-${i}`;
-            producer.textContent = `Producer ${i+1}`;
-            this.producersContainer.appendChild(producer);
-            this.producers.push({ id: i, element: producer });
-        }
-        
-        // Create consumers
-        for (let i = 0; i < consumerCount; i++) {
-            const consumer = document.createElement('div');
-            consumer.className = 'agent consumer';
-            consumer.id = `consumer-${i}`;
-            consumer.textContent = `Consumer ${i+1}`;
-            this.consumersContainer.appendChild(consumer);
-            this.consumers.push({ id: i, element: consumer });
-        }
-        
-        clearLog('producer-consumer-log');
-        logMessage('producer-consumer-log', 'Simulation set up.');
+    const producersContainer = document.getElementById('pc-producers-container');
+    producersContainer.innerHTML = '';
+    for (let i = 0; i < producerCount; i++) {
+        const producer = document.createElement('div');
+        producer.className = 'agent producer';
+        producer.id = `producer-${i}`;
+        producer.textContent = `P${i}`;
+        producer.setAttribute('data-status', 'idle');
+        producersContainer.appendChild(producer);
     }
-    
-    async produce(producerId) {
-        if (!this.running) return;
-        
-        const producer = this.producers.find(p => p.id === producerId);
-        if (!producer) return;
-        
-        // Activate producer
-        producer.element.classList.add('active');
-        
-        // Check if buffer is full
-        if (this.buffer.length >= this.bufferSize) {
-            logMessage('producer-consumer-log', `Producer ${producerId+1} waiting - buffer full`);
-            producer.element.classList.remove('active');
-            
-            // Try again after a delay if simulation is still running
-            if (this.running) {
-                await sleep(this.producerSpeed / 2);
-                this.produce(producerId);
-            }
-            return;
-        }
-        
-        // Produce item
-        await sleep(this.producerSpeed / 2);
-        const item = { id: this.nextItemId++ };
-        this.buffer.push(item);
-        
-        // Update buffer UI
-        const bufferIndex = this.buffer.length - 1;
-        const bufferItem = document.getElementById(`buffer-item-${bufferIndex}`);
-        if (bufferItem) {
-            bufferItem.textContent = item.id;
-            bufferItem.classList.add('filled');
-        }
-        
-        logMessage('producer-consumer-log', `Producer ${producerId+1} produced item ${item.id}`);
-        
-        // Deactivate producer
-        producer.element.classList.remove('active');
-        
-        // Schedule next production if simulation is running
-        if (this.running) {
-            const nextProduceTime = randomInt(this.producerSpeed * 0.8, this.producerSpeed * 1.2);
-            setTimeout(() => this.produce(producerId), nextProduceTime);
-        }
+    const consumersContainer = document.getElementById('pc-consumers-container');
+    consumersContainer.innerHTML = '';
+    for (let i = 0; i < consumerCount; i++) {
+        const consumer = document.createElement('div');
+        consumer.className = 'agent consumer';
+        consumer.id = `consumer-${i}`;
+        consumer.textContent = `C${i}`;
+        consumer.setAttribute('data-status', 'idle');
+        consumersContainer.appendChild(consumer);
     }
-    
-    async consume(consumerId) {
-        if (!this.running) return;
-        
-        const consumer = this.consumers.find(c => c.id === consumerId);
-        if (!consumer) return;
-        
-        // Activate consumer
-        consumer.element.classList.add('active');
-        
-        // Check if buffer is empty
-        if (this.buffer.length === 0) {
-            logMessage('producer-consumer-log', `Consumer ${consumerId+1} waiting - buffer empty`);
-            consumer.element.classList.remove('active');
-            
-            // Try again after a delay if simulation is still running
-            if (this.running) {
-                await sleep(this.consumerSpeed / 2);
-                this.consume(consumerId);
-            }
-            return;
+    document.getElementById('pc-log').innerHTML = '';
+    addLogEntry('pc', 'Producer-Consumer simulation initialized', 'info');
+}
+
+function resetProducerConsumer() {
+    const state = simulationState['producer-consumer'];
+    state.running = false;
+    state.buffer = [];
+    state.producers = [];
+    state.consumers = [];
+    state.mutexLock = false;
+    const bufferSize = parseInt(document.getElementById('pc-buffer-size').value);
+    state.emptySemaphore = bufferSize;
+    state.fullSemaphore = 0;
+    initProducerConsumerUI();
+    document.getElementById('pc-start').disabled = false;
+    document.getElementById('pc-stop').disabled = true;
+    addLogEntry('pc', 'Simulation reset', 'info');
+}
+
+async function producer(id, state) {
+    const producerEl = document.getElementById(`producer-${id}`);
+    const minTime = parseInt(document.getElementById('pc-prod-min-time').value);
+    const maxTime = parseInt(document.getElementById('pc-prod-max-time').value);
+    while (state.running) {
+        producerEl.setAttribute('data-status', 'thinking');
+        const thinkTime = randomBetween(minTime, maxTime);
+        addLogEntry('pc', `Producer ${id} is thinking for ${thinkTime}ms`, 'info');
+        await sleep(thinkTime);
+        if (!state.running) break;
+        producerEl.setAttribute('data-status', 'waiting for empty');
+        addLogEntry('pc', `Producer ${id} is waiting for an empty slot`, 'warning');
+        while (state.emptySemaphore <= 0 && state.running) {
+            await sleep(100);
         }
-        
-        // Consume item
-        await sleep(this.consumerSpeed / 2);
-        const item = this.buffer.shift();
-        
-        // Update buffer UI
-        for (let i = 0; i < this.bufferSize; i++) {
+        if (!state.running) break;
+        state.emptySemaphore--;
+        producerEl.setAttribute('data-status', 'waiting for mutex');
+        addLogEntry('pc', `Producer ${id} is waiting for mutex`, 'warning');
+        while (state.mutexLock && state.running) {
+            await sleep(100);
+        }
+        if (!state.running) break;
+        state.mutexLock = true;
+        producerEl.setAttribute('data-status', 'producing');
+        producerEl.classList.add('active-agent');
+        const item = Math.floor(Math.random() * 100);
+        addLogEntry('pc', `Producer ${id} is producing item: ${item}`, 'success');
+        state.buffer.push(item);
+        for (let i = 0; i < state.buffer.length; i++) {
             const bufferItem = document.getElementById(`buffer-item-${i}`);
-            if (i < this.buffer.length) {
-                bufferItem.textContent = this.buffer[i].id;
-                bufferItem.classList.add('filled');
-            } else {
-                bufferItem.textContent = '';
-                bufferItem.classList.remove('filled');
-            }
+            bufferItem.textContent = state.buffer[i];
+            bufferItem.classList.add('full');
+        }
+        await sleep(500); 
+        producerEl.classList.remove('active-agent');
+        state.mutexLock = false;
+        state.fullSemaphore++;
+        producerEl.setAttribute('data-status', 'idle');
+    }
+    producerEl.setAttribute('data-status', 'stopped');
+    addLogEntry('pc', `Producer ${id} has stopped`, 'info');
+}
+
+async function consumer(id, state) {
+    const consumerEl = document.getElementById(`consumer-${id}`);
+    const minTime = parseInt(document.getElementById('pc-cons-min-time').value);
+    const maxTime = parseInt(document.getElementById('pc-cons-max-time').value);
+    while (state.running) {
+        consumerEl.setAttribute('data-status', 'thinking');
+        const thinkTime = randomBetween(minTime, maxTime);
+        addLogEntry('pc', `Consumer ${id} is thinking for ${thinkTime}ms`, 'info');
+        await sleep(thinkTime);
+        if (!state.running) break;
+        consumerEl.setAttribute('data-status', 'waiting for item');
+        addLogEntry('pc', `Consumer ${id} is waiting for an item`, 'warning');
+        while (state.fullSemaphore <= 0 && state.running) {
+            await sleep(100);
         }
         
-        logMessage('producer-consumer-log', `Consumer ${consumerId+1} consumed item ${item.id}`);
+        if (!state.running) break;
         
-        // Deactivate consumer
-        consumer.element.classList.remove('active');
-        
-        // Schedule next consumption if simulation is running
-        if (this.running) {
-            const nextConsumeTime = randomInt(this.consumerSpeed * 0.8, this.consumerSpeed * 1.2);
-            setTimeout(() => this.consume(consumerId), nextConsumeTime);
+        state.fullSemaphore--;
+
+        consumerEl.setAttribute('data-status', 'waiting for mutex');
+        addLogEntry('pc', `Consumer ${id} is waiting for mutex`, 'warning');
+
+        while (state.mutexLock && state.running) {
+            await sleep(100);
         }
+        
+        if (!state.running) break;
+        
+        state.mutexLock = true;
+
+        consumerEl.setAttribute('data-status', 'consuming');
+        consumerEl.classList.add('active-agent');
+
+        const item = state.buffer.shift();
+        addLogEntry('pc', `Consumer ${id} is consuming item: ${item}`, 'success');
+
+        for (let i = 0; i < state.buffer.length; i++) {
+            const bufferItem = document.getElementById(`buffer-item-${i}`);
+            bufferItem.textContent = state.buffer[i];
+            bufferItem.classList.add('full');
+        }
+
+        for (let i = state.buffer.length; i < parseInt(document.getElementById('pc-buffer-size').value); i++) {
+            const bufferItem = document.getElementById(`buffer-item-${i}`);
+            bufferItem.textContent = '';
+            bufferItem.classList.remove('full');
+        }
+        
+        await sleep(500); 
+        
+        consumerEl.classList.remove('active-agent');
+
+        state.mutexLock = false;
+   
+        state.emptySemaphore++;
+   
+        consumerEl.setAttribute('data-status', 'idle');
     }
     
-    start() {
-        if (this.running) return;
-        
-        this.running = true;
-        this.setup();
-        
-        document.getElementById('start-producer-consumer').disabled = true;
-        document.getElementById('stop-producer-consumer').disabled = false;
-        
-        logMessage('producer-consumer-log', 'Simulation started.');
-        
-        // Start all producers
-        this.producers.forEach(producer => {
-            const startDelay = randomInt(0, this.producerSpeed / 2);
-            setTimeout(() => this.produce(producer.id), startDelay);
-        });
-        
-        // Start all consumers
-        this.consumers.forEach(consumer => {
-            const startDelay = randomInt(0, this.consumerSpeed / 2);
-            setTimeout(() => this.consume(consumer.id), startDelay);
-        });
+    consumerEl.setAttribute('data-status', 'stopped');
+    addLogEntry('pc', `Consumer ${id} has stopped`, 'info');
+}
+
+async function startProducerConsumer() {
+    const state = simulationState['producer-consumer'];
+    
+    if (state.running) return;
+    
+    state.running = true;
+    state.buffer = [];
+    state.producers = [];
+    state.consumers = [];
+    state.mutexLock = false;
+    
+    const bufferSize = parseInt(document.getElementById('pc-buffer-size').value);
+    state.emptySemaphore = bufferSize;
+    state.fullSemaphore = 0;
+    
+    document.getElementById('pc-start').disabled = true;
+    document.getElementById('pc-stop').disabled = false;
+    
+    initProducerConsumerUI();
+    addLogEntry('pc', 'Starting Producer-Consumer simulation', 'success');
+    
+
+    const producerCount = parseInt(document.getElementById('pc-producers').value);
+    for (let i = 0; i < producerCount; i++) {
+        producer(i, state);
     }
     
-    stop() {
-        this.running = false;
-        
-        document.getElementById('start-producer-consumer').disabled = false;
-        document.getElementById('stop-producer-consumer').disabled = true;
-        
-        logMessage('producer-consumer-log', 'Simulation stopped.');
-        
-        // Deactivate all producers and consumers
-        this.producers.forEach(producer => producer.element.classList.remove('active'));
-        this.consumers.forEach(consumer => consumer.element.classList.remove('active'));
+
+    const consumerCount = parseInt(document.getElementById('pc-consumers').value);
+    for (let i = 0; i < consumerCount; i++) {
+        consumer(i, state);
     }
 }
 
-// 2. Readers-Writers Problem
-class ReadersWritersSimulation {
-    constructor() {
-        this.readers = [];
-        this.writers = [];
-        this.readerSpeed = 1000;
-        this.writerSpeed = 2000;
-        this.running = false;
-        this.resourceValue = "Initial Value";
-        this.activeReaders = 0;
-        this.activeWriter = null;
-        this.waitingReaders = [];
-        this.waitingWriters = [];
-        this.priority = "reader";
-        
-        // UI Elements
-        this.resourceContainer = document.getElementById('resource-container');
-        this.resourceValueElement = document.getElementById('resource-value');
-        this.accessStatusElement = document.getElementById('access-status');
-        this.readersContainer = document.getElementById('readers-container');
-        this.writersContainer = document.getElementById('writers-container');
-        
-        // Setup controls
-        document.getElementById('start-readers-writers').addEventListener('click', () => this.start());
-        document.getElementById('stop-readers-writers').addEventListener('click', () => this.stop());
-    }
-    
-    setup() {
-        const readerCount = parseInt(document.getElementById('reader-count').value);
-        const writerCount = parseInt(document.getElementById('writer-count').value);
-        this.readerSpeed = parseInt(document.getElementById('reader-speed').value);
-        this.writerSpeed = parseInt(document.getElementById('writer-speed').value);
-        this.priority = document.getElementById('reader-priority').value;
-        
-        // Clear previous state
-        this.readers = [];
-        this.writers = [];
-        this.readersContainer.innerHTML = '';
-        this.writersContainer.innerHTML = '';
-        this.activeReaders = 0;
-        this.activeWriter = null;
-        this.waitingReaders = [];
-        this.waitingWriters = [];
-        this.resourceValue = "Initial Value";
-        this.resourceValueElement.textContent = this.resourceValue;
-        this.accessStatusElement.textContent = "Not in use";
-        this.resourceContainer.className = "resource";
-        
-        // Create readers
-        for (let i = 0; i < readerCount; i++) {
-            const reader = document.createElement('div');
-            reader.className = 'agent reader';
-            reader.id = `reader-${i}`;
-            reader.textContent = `Reader ${i+1}`;
-            this.readersContainer.appendChild(reader);
-            this.readers.push({ id: i, element: reader, status: 'idle' });
-        }
-        
-        // Create writers
-        for (let i = 0; i < writerCount; i++) {
-            const writer = document.createElement('div');
-            writer.className = 'agent writer';
-            writer.id = `writer-${i}`;
-            writer.textContent = `Writer ${i+1}`;
-            this.writersContainer.appendChild(writer);
-            this.writers.push({ id: i, element: writer, status: 'idle' });
-        }
-        
-        clearLog('readers-writers-log');
-        logMessage('readers-writers-log', 'Simulation set up.');
-    }
-    
-    async startReading(readerId) {
-        if (!this.running) return;
-        
-        const reader = this.readers.find(r => r.id === readerId);
-        if (!reader) return;
-        
-        // Check if we can read
-        if (this.activeWriter !== null || (this.priority === 'writer' && this.waitingWriters.length > 0)) {
-            // Cannot read now, must wait
-            if (reader.status !== 'waiting') {
-                reader.status = 'waiting';
-                reader.element.textContent = `Reader ${readerId+1} (waiting)`;
-                this.waitingReaders.push(readerId);
-                logMessage('readers-writers-log', `Reader ${readerId+1} waiting to access resource`);
-            }
-            
-            // Try again after a delay if simulation is still running
-            if (this.running) {
-                await sleep(this.readerSpeed / 2);
-                this.startReading(readerId);
-            }
-            return;
-        }
-        
-        // Start reading
-        reader.status = 'reading';
-        reader.element.classList.add('active');
-        reader.element.textContent = `Reader ${readerId+1} (reading)`;
-        this.activeReaders++;
-        
-        // Update the resource UI
-        this.resourceContainer.classList.add('reading');
-        this.accessStatusElement.textContent = `Being read by ${this.activeReaders} reader(s)`;
-        
-        // Remove from waiting list if applicable
-        const waitingIndex = this.waitingReaders.indexOf(readerId);
-        if (waitingIndex !== -1) {
-            this.waitingReaders.splice(waitingIndex, 1);
-        }
-        
-        logMessage('readers-writers-log', `Reader ${readerId+1} started reading. Value: "${this.resourceValue}"`);
-        
-        // Read for a while
-        await sleep(this.readerSpeed);
-        
-        // Finish reading
-        if (this.running && reader.status === 'reading') {
-            this.activeReaders--;
-            reader.status = 'idle';
-            reader.element.classList.remove('active');
-            reader.element.textContent = `Reader ${readerId+1}`;
-            
-            logMessage('readers-writers-log', `Reader ${readerId+1} finished reading`);
-            
-            // Update the resource UI
-            if (this.activeReaders === 0) {
-                this.resourceContainer.classList.remove('reading');
-                this.accessStatusElement.textContent = "Not in use";
-                
-                // Allow waiting writers to proceed if there are any
-                if (this.waitingWriters.length > 0 && this.running) {
-                    const nextWriterId = this.waitingWriters[0];
-                    const nextWriter = this.writers.find(w => w.id === nextWriterId);
-                    if (nextWriter && nextWriter.status === 'waiting') {
-                        this.startWriting(nextWriterId);
-                    }
-                }
-            } else {
-                this.accessStatusElement.textContent = `Being read by ${this.activeReaders} reader(s)`;
-            }
-        }
-        
-        // Schedule next reading if simulation is running
-        if (this.running) {
-            const nextReadTime = randomInt(this.readerSpeed * 0.8, this.readerSpeed * 1.2);
-            setTimeout(() => this.startReading(readerId), nextReadTime);
-        }
-    }
-    
-    async startWriting(writerId) {
-        if (!this.running) return;
-        
-        const writer = this.writers.find(w => w.id === writerId);
-        if (!writer) return;
-        
-        // Check if we can write
-        if (this.activeReaders > 0 || this.activeWriter !== null || 
-            (this.priority === 'reader' && this.waitingReaders.length > 0)) {
-            // Cannot write now, must wait
-            if (writer.status !== 'waiting') {
-                writer.status = 'waiting';
-                writer.element.textContent = `Writer ${writerId+1} (waiting)`;
-                if (!this.waitingWriters.includes(writerId)) {
-                    this.waitingWriters.push(writerId);
-                }
-                logMessage('readers-writers-log', `Writer ${writerId+1} waiting to access resource`);
-            }
-            
-            // Try again after a delay if simulation is still running
-            if (this.running) {
-                await sleep(this.writerSpeed / 2);
-                this.startWriting(writerId);
-            }
-            return;
-        }
-        
-        // Start writing
-        writer.status = 'writing';
-        writer.element.classList.add('active');
-        writer.element.textContent = `Writer ${writerId+1} (writing)`;
-        this.activeWriter = writerId;
-        
-        // Update the resource UI
-        this.resourceContainer.classList.add('writing');
-        this.resourceContainer.classList.remove('reading');
-        this.accessStatusElement.textContent = `Being written by Writer ${writerId+1}`;
-        
-        // Remove from waiting list if applicable
-        const waitingIndex = this.waitingWriters.indexOf(writerId);
-        if (waitingIndex !== -1) {
-            this.waitingWriters.splice(waitingIndex, 1);
-        }
-        
-        logMessage('readers-writers-log', `Writer ${writerId+1} started writing`);
-        
-        // Write for a while
-        await sleep(this.writerSpeed);
-        
-        // Finish writing with a new value
-        if (this.running && writer.status === 'writing') {
-            const newValue = `Value written by Writer ${writerId+1} at ${new Date().toLocaleTimeString()}`;
-            this.resourceValue = newValue;
-            this.resourceValueElement.textContent = newValue;
-            
-            writer.status = 'idle';
-            writer.element.classList.remove('active');
-            writer.element.textContent = `Writer ${writerId+1}`;
-            this.activeWriter = null;
-            
-            // Update the resource UI
-            this.resourceContainer.classList.remove('writing');
-            this.accessStatusElement.textContent = "Not in use";
-            
-            logMessage('readers-writers-log', `Writer ${writerId+1} finished writing. New value: "${newValue}"`);
-            
-            // Allow waiting readers or writers to proceed based on priority
-            if (this.running) {
-                if (this.priority === 'reader' && this.waitingReaders.length > 0) {
-                    // Let all waiting readers proceed
-                    [...this.waitingReaders].forEach(readerId => {
-                        const reader = this.readers.find(r => r.id === readerId);
-                        if (reader && reader.status === 'waiting') {
-                            this.startReading(readerId);
-                        }
-                    });
-                } else if (this.waitingWriters.length > 0) {
-                    // Let next writer proceed
-                    const nextWriterId = this.waitingWriters[0];
-                    const nextWriter = this.writers.find(w => w.id === nextWriterId);
-                    if (nextWriter && nextWriter.status === 'waiting') {
-                        this.startWriting(nextWriterId);
-                    }
-                } else if (this.waitingReaders.length > 0) {
-                    // Let all waiting readers proceed if no writers
-                    [...this.waitingReaders].forEach(readerId => {
-                        const reader = this.readers.find(r => r.id === readerId);
-                        if (reader && reader.status === 'waiting') {
-                            this.startReading(readerId);
-                        }
-                    });
-                }
-            }
-        }
-        
-        // Schedule next writing if simulation is running
-        if (this.running) {
-            const nextWriteTime = randomInt(this.writerSpeed * 0.8, this.writerSpeed * 1.2);
-            setTimeout(() => this.startWriting(writerId), nextWriteTime);
-        }
-    }
 
-start() {
-    if (this.running) return;
+function stopProducerConsumer() {
+    const state = simulationState['producer-consumer'];
     
-    this.running = true;
-    this.setup();
+    state.running = false;
+    document.getElementById('pc-start').disabled = false;
+    document.getElementById('pc-stop').disabled = true;
     
-    document.getElementById('start-readers-writers').disabled = true;
-    document.getElementById('stop-readers-writers').disabled = false;
-    
-    logMessage('readers-writers-log', 'Simulation started.');
-    
-    // Start all readers
-    this.readers.forEach(reader => {
-        const startDelay = randomInt(0, this.readerSpeed);
-        setTimeout(() => this.startReading(reader.id), startDelay);
-    });
-    
-    // Start all writers
-    this.writers.forEach(writer => {
-        const startDelay = randomInt(0, this.writerSpeed);
-        setTimeout(() => this.startWriting(writer.id), startDelay);
-    });
+    addLogEntry('pc', 'Stopping simulation...', 'warning');
 }
 
-stop() {
-    this.running = false;
+document.getElementById('pc-start').addEventListener('click', startProducerConsumer);
+document.getElementById('pc-stop').addEventListener('click', stopProducerConsumer);
+document.getElementById('pc-reset').addEventListener('click', resetProducerConsumer);
+
+function initReadersWritersUI() {
+    const readerCount = parseInt(document.getElementById('rw-readers').value);
+    const writerCount = parseInt(document.getElementById('rw-writers').value);
     
-    document.getElementById('start-readers-writers').disabled = false;
-    document.getElementById('stop-readers-writers').disabled = true;
+    const resource = document.getElementById('rw-resource');
+    resource.className = 'resource';
+    resource.querySelector('.resource-status').textContent = 'Not in use';
+    resource.querySelector('.resource-counter').textContent = 'Readers: 0';
     
-    logMessage('readers-writers-log', 'Simulation stopped.');
+    const readersContainer = document.getElementById('rw-readers-container');
+    readersContainer.innerHTML = '';
     
-    // Reset reader and writer states
-    this.readers.forEach(reader => {
-        reader.status = 'idle';
-        reader.element.classList.remove('active');
-        reader.element.textContent = `Reader ${reader.id+1}`;
-    });
+    for (let i = 0; i < readerCount; i++) {
+        const reader = document.createElement('div');
+        reader.className = 'agent reader';
+        reader.id = `reader-${i}`;
+        reader.textContent = `R${i}`;
+        reader.setAttribute('data-status', 'idle');
+        readersContainer.appendChild(reader);
+    }
     
-    this.writers.forEach(writer => {
-        writer.status = 'idle';
-        writer.element.classList.remove('active');
-        writer.element.textContent = `Writer ${writer.id+1}`;
-    });
+    const writersContainer = document.getElementById('rw-writers-container');
+    writersContainer.innerHTML = '';
     
-    // Reset resource
-    this.resourceContainer.classList.remove('reading', 'writing');
-    this.accessStatusElement.textContent = "Not in use";
-    this.activeReaders = 0;
-    this.activeWriter = null;
-    this.waitingReaders = [];
-    this.waitingWriters = [];
-}
+    for (let i = 0; i < writerCount; i++) {
+        const writer = document.createElement('div');
+        writer.className = 'agent writer';
+        writer.id = `writer-${i}`;
+        writer.textContent = `W${i}`;
+        writer.setAttribute('data-status', 'idle');
+        writersContainer.appendChild(writer);
+    }
+    
+    document.getElementById('rw-log').innerHTML = '';
+    addLogEntry('rw', 'Readers-Writers simulation initialized', 'info');
 }
 
-// 3. Dining Philosophers Problem
-class DiningPhilosophersSimulation {
-constructor() {
-    this.philosophers = [];
-    this.forks = [];
-    this.philosopherCount = 5;
-    this.thinkingTime = 1500;
-    this.eatingTime = 2000;
-    this.running = false;
-    this.deadlockPrevention = 'none';
+function resetReadersWriters() {
+    const state = simulationState['readers-writers'];
     
-    // UI Elements
-    this.tableContainer = document.getElementById('table');
-    this.philosophersContainer = document.getElementById('philosophers-container');
+    state.running = false;
+    state.readers = [];
+    state.writers = [];
+    state.readCount = 0;
+    state.writeCount = 0;
+    state.mutex = false;
+    state.resourceMutex = false;
+    state.readMutex = false;
+    state.writeMutex = false;
+    state.waitingReaders = [];
+    state.waitingWriters = [];
+    state.queue = [];
     
-    // Setup controls
-    document.getElementById('start-dining-philosophers').addEventListener('click', () => this.start());
-    document.getElementById('stop-dining-philosophers').addEventListener('click', () => this.stop());
+    initReadersWritersUI();
+    
+    document.getElementById('rw-start').disabled = false;
+    document.getElementById('rw-stop').disabled = true;
+    
+    addLogEntry('rw', 'Simulation reset', 'info');
 }
 
-setup() {
-    this.philosopherCount = parseInt(document.getElementById('philosopher-count').value);
-    this.thinkingTime = parseInt(document.getElementById('thinking-time').value);
-    this.eatingTime = parseInt(document.getElementById('eating-time').value);
-    this.deadlockPrevention = document.getElementById('deadlock-prevention').value;
+async function reader(id, state) {
+    const readerEl = document.getElementById(`reader-${id}`);
+    const minTime = parseInt(document.getElementById('rw-read-min-time').value);
+    const maxTime = parseInt(document.getElementById('rw-read-max-time').value);
+    const priority = document.getElementById('rw-priority').value;
     
-    // Clear previous state
-    this.philosophers = [];
-    this.forks = [];
-    this.tableContainer.innerHTML = '';
-    this.philosophersContainer.innerHTML = '';
+    while (state.running) {
+        
+        readerEl.setAttribute('data-status', 'thinking');
+        const thinkTime = randomBetween(minTime, maxTime);
+        addLogEntry('rw', `Reader ${id} is thinking for ${thinkTime}ms`, 'info');
+        await sleep(thinkTime);
+        
+        if (!state.running) break;
+        readerEl.setAttribute('data-status', 'waiting');
+        readerEl.classList.add('waiting-agent');
+        addLogEntry('rw', `Reader ${id} wants to read`, 'warning');
+        
+       
+        if (priority === 'fair') {
+            state.queue.push({ type: 'reader', id });
+            while (state.queue[0].type !== 'reader' || state.queue[0].id !== id) {
+                await sleep(100);
+                if (!state.running) break;
+            }
+            if (!state.running) break;
+        }
+        
+        
+        if (priority === 'writers') {
+            while ((state.writeMutex || state.writeCount > 0) && state.running) {
+                await sleep(100);
+            }
+        } else {
+            while (state.writeCount > 0 && state.running) {
+                await sleep(100);
+            }
+        }
+        
+        if (!state.running) break;
+        
+
+        while (state.readMutex && state.running) {
+            await sleep(100);
+        }
+        
+        if (!state.running) break;
+        
+        state.readMutex = true;
+        
+
+        state.readCount++;
+        
+ 
+        if (state.readCount === 1) {
+     
+            while (state.resourceMutex && state.running) {
+                await sleep(100);
+            }
+            
+            if (!state.running) {
+                state.readMutex = false;
+                break;
+            }
+            
+            state.resourceMutex = true;
+            
+            const resource = document.getElementById('rw-resource');
+            resource.classList.add('reading');
+            resource.querySelector('.resource-status').textContent = 'Reading';
+        }
+        
+        state.readMutex = false;
+        
+        if (priority === 'fair') {
+            state.queue.shift(); 
+        }
+        
+        readerEl.setAttribute('data-status', 'reading');
+        readerEl.classList.remove('waiting-agent');
+        readerEl.classList.add('active-agent');
+        
+        
+        document.querySelector('#rw-resource .resource-counter').textContent = `Readers: ${state.readCount}`;
+        
+        addLogEntry('rw', `Reader ${id} is reading`, 'success');
+        
+       
+        const readTime = randomBetween(minTime, maxTime);
+        await sleep(readTime);
+        
+        readerEl.classList.remove('active-agent');
+        
+        if (!state.running) break;
+        
+        while (state.readMutex && state.running) {
+            await sleep(100);
+        }
+        
+        if (!state.running) break;
+        
+        state.readMutex = true;
+        
+        state.readCount--;
+
+        document.querySelector('#rw-resource .resource-counter').textContent = `Readers: ${state.readCount}`;
+      
+        if (state.readCount === 0) {
+
+            state.resourceMutex = false;
+            
+            const resource = document.getElementById('rw-resource');
+            resource.classList.remove('reading');
+            resource.querySelector('.resource-status').textContent = 'Not in use';
+        }
+        
+        state.readMutex = false;
+        
+        readerEl.setAttribute('data-status', 'idle');
+        addLogEntry('rw', `Reader ${id} finished reading`, 'info');
+    }
     
-    // Create forks
-    for (let i = 0; i < this.philosopherCount; i++) {
+    readerEl.setAttribute('data-status', 'stopped');
+    readerEl.classList.remove('waiting-agent', 'active-agent');
+    addLogEntry('rw', `Reader ${id} has stopped`, 'info');
+}
+
+async function writer(id, state) {
+    const writerEl = document.getElementById(`writer-${id}`);
+    const minTime = parseInt(document.getElementById('rw-write-min-time').value);
+    const maxTime = parseInt(document.getElementById('rw-write-max-time').value);
+    const priority = document.getElementById('rw-priority').value;
+    
+    while (state.running) {
+        writerEl.setAttribute('data-status', 'thinking');
+        const thinkTime = randomBetween(minTime, maxTime);
+        addLogEntry('rw', `Writer ${id} is thinking for ${thinkTime}ms`, 'info');
+        await sleep(thinkTime);
+        
+        if (!state.running) break;
+        
+        writerEl.setAttribute('data-status', 'waiting');
+        writerEl.classList.add('waiting-agent');
+        addLogEntry('rw', `Writer ${id} wants to write`, 'warning');
+        
+        if (priority === 'fair') {
+            state.queue.push({ type: 'writer', id });
+            while (state.queue[0].type !== 'writer' || state.queue[0].id !== id) {
+                await sleep(100);
+                if (!state.running) break;
+            }
+            if (!state.running) break;
+        }
+        
+        if (priority === 'writers') {
+ 
+            while (state.writeMutex && state.running) {
+                await sleep(100);
+            }
+            if (!state.running) break;
+            state.writeMutex = true;
+        }
+
+        while (state.resourceMutex && state.running) {
+            await sleep(100);
+        }
+        
+        if (!state.running) {
+            if (priority === 'writers') {
+                state.writeMutex = false;
+            }
+            break;
+        }
+        
+        state.resourceMutex = true;
+        state.writeCount++;
+        
+        if (priority === 'fair') {
+            state.queue.shift(); 
+        }
+
+        writerEl.setAttribute('data-status', 'writing');
+        writerEl.classList.remove('waiting-agent');
+        writerEl.classList.add('active-agent');
+
+        const resource = document.getElementById('rw-resource');
+        resource.classList.add('writing');
+        resource.querySelector('.resource-status').textContent = 'Writing';
+        
+        addLogEntry('rw', `Writer ${id} is writing`, 'success');
+
+        const writeTime = randomBetween(minTime, maxTime);
+        await sleep(writeTime);
+        
+        writerEl.classList.remove('active-agent');
+        
+        if (!state.running) break;
+        state.writeCount--;
+
+        resource.classList.remove('writing');
+        resource.querySelector('.resource-status').textContent = 'Not in use';
+
+        state.resourceMutex = false;
+
+        if (priority === 'writers') {
+            state.writeMutex = false;
+        }
+        
+        writerEl.setAttribute('data-status', 'idle');
+        addLogEntry('rw', `Writer ${id} finished writing`, 'info');
+    }
+    
+    writerEl.setAttribute('data-status', 'stopped');
+    writerEl.classList.remove('waiting-agent', 'active-agent');
+    addLogEntry('rw', `Writer ${id} has stopped`, 'info');
+}
+
+async function startReadersWriters() {
+    const state = simulationState['readers-writers'];
+    
+    if (state.running) return;
+    
+    state.running = true;
+    state.readers = [];
+    state.writers = [];
+    state.readCount = 0;
+    state.writeCount = 0;
+    state.mutex = false;
+    state.resourceMutex = false;
+    state.readMutex = false;
+    state.writeMutex = false;
+    state.waitingReaders = [];
+    state.waitingWriters = [];
+    state.queue = [];
+    
+    document.getElementById('rw-start').disabled = true;
+    document.getElementById('rw-stop').disabled = false;
+    
+    initReadersWritersUI();
+    addLogEntry('rw', 'Starting Readers-Writers simulation', 'success');
+        const readerCount = parseInt(document.getElementById('rw-readers').value);
+    for (let i = 0; i < readerCount; i++) {
+        reader(i, state);
+    }
+    
+    const writerCount = parseInt(document.getElementById('rw-writers').value);
+    for (let i = 0; i < writerCount; i++) {
+        writer(i, state);
+    }
+}
+
+function stopReadersWriters() {
+    const state = simulationState['readers-writers'];
+    
+    state.running = false;
+    document.getElementById('rw-start').disabled = false;
+    document.getElementById('rw-stop').disabled = true;
+    
+    addLogEntry('rw', 'Stopping simulation...', 'warning');
+}
+
+document.getElementById('rw-start').addEventListener('click', startReadersWriters);
+document.getElementById('rw-stop').addEventListener('click', stopReadersWriters);
+document.getElementById('rw-reset').addEventListener('click', resetReadersWriters);
+
+function initDiningPhilosophersUI() {
+    const philosopherCount = parseInt(document.getElementById('dp-philosophers').value);
+    
+    const tableContainer = document.getElementById('dp-table');
+    tableContainer.innerHTML = '<div class="table-center">Table</div>';
+    
+    for (let i = 0; i < philosopherCount; i++) {
+        
+        const angle = (i * (360 / philosopherCount)) * (Math.PI / 180);
+        const radius = 120; 
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        
+        
+        const philosopherSeat = document.createElement('div');
+        philosopherSeat.className = 'philosopher-seat';
+        philosopherSeat.id = `philosopher-${i}`;
+        philosopherSeat.textContent = `P${i}`;
+        philosopherSeat.style.left = `calc(50% + ${x}px)`;
+        philosopherSeat.style.top = `calc(50% + ${y}px)`;
+        tableContainer.appendChild(philosopherSeat);
+        
+        
+        const forkAngle = ((i + 0.5) * (360 / philosopherCount)) * (Math.PI / 180);
+        const forkX = Math.cos(forkAngle) * (radius - 40);
+        const forkY = Math.sin(forkAngle) * (radius - 40);
+        
         const fork = document.createElement('div');
-        fork.className = 'fork';
+        fork.className = 'fork-item';
         fork.id = `fork-${i}`;
-        
-        // Position fork around the table
-        const angle = (i / this.philosopherCount) * 2 * Math.PI;
-        const tableRadius = 80; // Adjust based on table size
-        const forkX = tableRadius * Math.cos(angle);
-        const forkY = tableRadius * Math.sin(angle);
-        
-        fork.style.left = `${100 + forkX}px`;
-        fork.style.top = `${100 + forkY}px`;
-        fork.style.transform = `rotate(${angle + Math.PI/2}rad) translateX(-5px)`;
-        
-        this.tableContainer.appendChild(fork);
-        this.forks.push({ id: i, element: fork, inUse: false });
+        fork.style.left = `calc(50% + ${forkX}px)`;
+        fork.style.top = `calc(50% + ${forkY}px)`;
+        fork.style.transform = `translate(-50%, -50%) rotate(${forkAngle + Math.PI/2}rad)`;
+        tableContainer.appendChild(fork);
     }
     
-    // Create philosopher status indicators
-    for (let i = 0; i < this.philosopherCount; i++) {
-        const philosopherStatus = document.createElement('div');
-        philosopherStatus.className = 'philosopher-status thinking';
-        philosopherStatus.id = `philosopher-status-${i}`;
-        philosopherStatus.textContent = `Philosopher ${i+1}\nthinking`;
-        
-        this.philosophersContainer.appendChild(philosopherStatus);
-        
-        this.philosophers.push({
-            id: i,
-            status: 'thinking',
-            element: philosopherStatus,
-            leftFork: i,
-            rightFork: (i + 1) % this.philosopherCount
-        });
+   
+    const statusContainer = document.getElementById('dp-status-container');
+    statusContainer.innerHTML = '';
+    
+    for (let i = 0; i < philosopherCount; i++) {
+        const status = document.createElement('div');
+        status.className = 'philosopher-status';
+        status.innerHTML = `<span>P${i}: </span><span id="status-${i}">Thinking</span>`;
+        statusContainer.appendChild(status);
     }
     
-    clearLog('dining-philosophers-log');
-    logMessage('dining-philosophers-log', 'Simulation set up.');
+  
+    document.getElementById('dp-log').innerHTML = '';
+    
+    addLogEntry('dp', 'Dining Philosophers simulation initialized', 'info');
 }
 
-updatePhilosopherStatus(philosopherId, status) {
-    const philosopher = this.philosophers.find(p => p.id === philosopherId);
-    if (!philosopher) return;
+function resetDiningPhilosophers() {
+    const state = simulationState['dining-philosophers'];
     
-    philosopher.status = status;
-    philosopher.element.className = `philosopher-status ${status}`;
-    philosopher.element.textContent = `Philosopher ${philosopherId+1}\n${status}`;
+    state.running = false;
+    state.philosophers = [];
+    state.forks = [];
+    state.mutex = false;
+    
+    initDiningPhilosophersUI();
+    
+    document.getElementById('dp-start').disabled = false;
+    document.getElementById('dp-stop').disabled = true;
+    
+    addLogEntry('dp', 'Simulation reset', 'info');
 }
 
-updateForkStatus(forkId, inUse) {
-    const fork = this.forks.find(f => f.id === forkId);
-    if (!fork) return;
+async function philosopher(id, state) {
+    const philosopherEl = document.getElementById(`philosopher-${id}`);
+    const statusEl = document.getElementById(`status-${id}`);
+    const philosopherCount = parseInt(document.getElementById('dp-philosophers').value);
+    const strategy = document.getElementById('dp-strategy').value;
     
-    fork.inUse = inUse;
-    if (inUse) {
-        fork.element.classList.add('in-use');
+    const thinkMinTime = parseInt(document.getElementById('dp-think-min-time').value);
+    const thinkMaxTime = parseInt(document.getElementById('dp-think-max-time').value);
+    const eatMinTime = parseInt(document.getElementById('dp-eat-min-time').value);
+    const eatMaxTime = parseInt(document.getElementById('dp-eat-max-time').value);
+
+    let leftFork, rightFork;
+    
+    if (strategy === 'asymmetric') {
+       
+        if (id % 2 === 0) {
+            leftFork = id;
+            rightFork = (id + 1) % philosopherCount;
+        } else {
+            leftFork = (id + 1) % philosopherCount;
+            rightFork = id;
+        }
     } else {
-        fork.element.classList.remove('in-use');
+        
+        leftFork = id;
+        rightFork = (id + 1) % philosopherCount;
     }
+    
+    while (state.running) {
+        philosopherEl.className = 'philosopher-seat thinking';
+        statusEl.textContent = 'Thinking';
+        
+        const thinkTime = randomBetween(thinkMinTime, thinkMaxTime);
+        addLogEntry('dp', `Philosopher ${id} is thinking for ${thinkTime}ms`, 'info');
+        await sleep(thinkTime);
+        
+        if (!state.running) break;
+        
+        philosopherEl.className = 'philosopher-seat waiting';
+        statusEl.textContent = 'Hungry';
+        addLogEntry('dp', `Philosopher ${id} is hungry and wants to eat`, 'warning');
+        
+        if (strategy === 'arbitrator') {
+            while (state.mutex && state.running) {
+                await sleep(100);
+            }
+            
+            if (!state.running) break;
+            
+            state.mutex = true;
+            
+            
+            const lowerFork = Math.min(leftFork, rightFork);
+            const higherFork = Math.max(leftFork, rightFork);
+            
+            
+            await takeFork(lowerFork, id, state);
+            await sleep(200); 
+            
+          
+            await takeFork(higherFork, id, state);
+            
+         
+            state.mutex = false;
+        } else if (strategy === 'asymmetric') {
+            await takeFork(leftFork, id, state);
+            await sleep(200);
+            
+            if (!state.running) {
+                await releaseFork(leftFork, state);
+                break;
+            }
+            
+
+            if (await tryTakeFork(rightFork, id, state)) {
+                
+            } else {
+               
+                await releaseFork(leftFork, state);
+                continue;
+            }
+        } else if (strategy === 'chandy-misra') {
+
+            if (await tryTakeBothForks(leftFork, rightFork, id, state)) {
+            } else {
+                await sleep(randomBetween(100, 500));
+                continue;
+            }
+        }
+        
+        if (!state.running) {
+            await releaseFork(leftFork, state);
+            await releaseFork(rightFork, state);
+            break;
+        }
+    
+        philosopherEl.className = 'philosopher-seat eating';
+        statusEl.textContent = 'Eating';
+        addLogEntry('dp', `Philosopher ${id} is eating`, 'success');
+        
+        const eatTime = randomBetween(eatMinTime, eatMaxTime);
+        await sleep(eatTime);
+        await releaseFork(leftFork, state);
+        await sleep(200); 
+        await releaseFork(rightFork, state);
+        
+        addLogEntry('dp', `Philosopher ${id} finished eating`, 'info');
+    }
+    
+    philosopherEl.className = 'philosopher-seat';
+    statusEl.textContent = 'Stopped';
+    addLogEntry('dp', `Philosopher ${id} has stopped`, 'info');
 }
 
-async pickUpForks(philosopherId) {
-    const philosopher = this.philosophers.find(p => p.id === philosopherId);
-    if (!philosopher) return false;
-    
-    let leftForkId = philosopher.leftFork;
-    let rightForkId = philosopher.rightFork;
-    
-    // Resource hierarchy solution to prevent deadlock
-    if (this.deadlockPrevention === 'resource-hierarchy') {
-        // Always pick up the lower-numbered fork first
-        if (leftForkId > rightForkId) {
-            [leftForkId, rightForkId] = [rightForkId, leftForkId];
-        }
+async function takeFork(forkId, philosopherId, state) {
+    const fork = document.getElementById(`fork-${forkId}`);
+    while (state.forks[forkId] !== undefined && state.running) {
+        await sleep(100);
     }
-    
-    // Arbitrator solution (only allow N-1 philosophers to eat simultaneously)
-    if (this.deadlockPrevention === 'arbitrator') {
-        // Check if we'd exceed the safe number of philosophers eating
-        const eatingCount = this.philosophers.filter(p => p.status === 'eating').length;
-        if (eatingCount >= this.philosopherCount - 1) {
-            return false;
-        }
-    }
-    
-    // Try to pick up the first fork
-    const firstFork = this.forks.find(f => f.id === leftForkId);
-    if (!firstFork || firstFork.inUse) return false;
-    
-    this.updateForkStatus(leftForkId, true);
-    logMessage('dining-philosophers-log', `Philosopher ${philosopherId+1} picked up fork ${leftForkId+1}`);
-    
-    // Try to pick up the second fork
-    const secondFork = this.forks.find(f => f.id === rightForkId);
-    if (!secondFork || secondFork.inUse) {
-        // Have to put down the first fork
-        this.updateForkStatus(leftForkId, false);
-        logMessage('dining-philosophers-log', `Philosopher ${philosopherId+1} had to put down fork ${leftForkId+1}`);
-        return false;
-    }
-    
-    this.updateForkStatus(rightForkId, true);
-    logMessage('dining-philosophers-log', `Philosopher ${philosopherId+1} picked up fork ${rightForkId+1}`);
-    
+    if (!state.running) return false;
+    state.forks[forkId] = philosopherId;
+    fork.classList.add('used');
+    addLogEntry('dp', `Philosopher ${philosopherId} took fork ${forkId}`, 'info');
     return true;
 }
 
-putDownForks(philosopherId) {
-    const philosopher = this.philosophers.find(p => p.id === philosopherId);
-    if (!philosopher) return;
-    
-    this.updateForkStatus(philosopher.leftFork, false);
-    this.updateForkStatus(philosopher.rightFork, false);
-    
-    logMessage('dining-philosophers-log', `Philosopher ${philosopherId+1} put down both forks`);
+async function tryTakeFork(forkId, philosopherId, state) {
+    const fork = document.getElementById(`fork-${forkId}`);
+    if (state.forks[forkId] !== undefined) {
+        return false;
+    }
+    state.forks[forkId] = philosopherId;
+    fork.classList.add('used');  
+    addLogEntry('dp', `Philosopher ${philosopherId} took fork ${forkId}`, 'info');
+    return true;
 }
 
-async philosopherCycle(philosopherId) {
-    if (!this.running) return;
+async function tryTakeBothForks(leftFork, rightFork, philosopherId, state) {
+    if (state.forks[leftFork] !== undefined || state.forks[rightFork] !== undefined) {
+        return false;
+    }
+    state.forks[leftFork] = philosopherId;
+    document.getElementById(`fork-${leftFork}`).classList.add('used');
     
-    const philosopher = this.philosophers.find(p => p.id === philosopherId);
-    if (!philosopher) return;
+    await sleep(200); 
     
-    // Thinking
-    this.updatePhilosopherStatus(philosopherId, 'thinking');
-    logMessage('dining-philosophers-log', `Philosopher ${philosopherId+1} is thinking`);
-    await sleep(this.thinkingTime);
+    state.forks[rightFork] = philosopherId;
+    document.getElementById(`fork-${rightFork}`).classList.add('used');
     
-    if (!this.running) return;
+    addLogEntry('dp', `Philosopher ${philosopherId} took both forks`, 'info');
+    return true;
+}
+
+async function releaseFork(forkId, state) {
+    const fork = document.getElementById(`fork-${forkId}`);
     
-    // Hungry
-    this.updatePhilosopherStatus(philosopherId, 'hungry');
-    logMessage('dining-philosophers-log', `Philosopher ${philosopherId+1} is hungry`);
+    if (state.forks[forkId] !== undefined) {
+        const philosopherId = state.forks[forkId];
+        delete state.forks[forkId];
+        fork.classList.remove('used');
+        
+        addLogEntry('dp', `Philosopher ${philosopherId} released fork ${forkId}`, 'info');
+    }
+}
+
+async function startDiningPhilosophers() {
+    const state = simulationState['dining-philosophers'];
+    if (state.running) return;
+    state.running = true;
+    state.philosophers = [];
+    state.forks = [];
+    state.mutex = false;
+    document.getElementById('dp-start').disabled = true;
+    document.getElementById('dp-stop').disabled = false;
+    initDiningPhilosophersUI();
+    addLogEntry('dp', 'Starting Dining Philosophers simulation', 'success');
+    const philosopherCount = parseInt(document.getElementById('dp-philosophers').value);
+    for (let i = 0; i < philosopherCount; i++) {
+        philosopher(i, state);
+    }
+}
+
+function stopDiningPhilosophers() {
+    const state = simulationState['dining-philosophers'];
     
-    // Try to pick up forks
-    let success = false;
-    while (this.running && !success) {
-        success = await this.pickUpForks(philosopherId);
-        if (!success && this.running) {
-            await sleep(500); // Wait a bit before trying again
+    state.running = false;
+    document.getElementById('dp-start').disabled = false;
+    document.getElementById('dp-stop').disabled = true;
+    
+    addLogEntry('dp', 'Stopping simulation...', 'warning');
+}
+
+document.getElementById('dp-start').addEventListener('click', startDiningPhilosophers);
+document.getElementById('dp-stop').addEventListener('click', stopDiningPhilosophers);
+document.getElementById('dp-reset').addEventListener('click', resetDiningPhilosophers);
+document.addEventListener('DOMContentLoaded', function() {
+    resetProducerConsumer();
+    resetReadersWriters();
+    resetDiningPhilosophers();
+    document.querySelector('.tab[data-tab="producer-consumer"]').click();
+});
+
+document.querySelectorAll('input[type="range"]').forEach(input => {
+    const valueDisplay = document.getElementById(`${input.id}-value`);
+    if (valueDisplay) {
+        valueDisplay.textContent = input.value;
+        input.addEventListener('input', () => {
+            valueDisplay.textContent = input.value;
+        });
+    }
+});
+
+function applyPreset(problemId, presetConfig) {
+    Object.keys(presetConfig).forEach(key => {
+        const element = document.getElementById(`${problemId}-${key}`);
+        if (element) {
+            element.value = presetConfig[key];
+            
+            if (element.type === 'range') {
+                const event = new Event('input');
+                element.dispatchEvent(event);
+            }
+        }
+    });
+}
+
+const presets = {
+    'producer-consumer': {
+        'high-contention': {
+            'buffer-size': 3,
+            'producers': 5,
+            'consumers': 5,
+            'prod-min-time': 500,
+            'prod-max-time': 1500,
+            'cons-min-time': 500,
+            'cons-max-time': 1500
+        },
+        'low-contention': {
+            'buffer-size': 10,
+            'producers': 2,
+            'consumers': 2,
+            'prod-min-time': 2000,
+            'prod-max-time': 5000,
+            'cons-min-time': 2000,
+            'cons-max-time': 5000
+        }
+    },
+    'readers-writers': {
+        'reader-priority': {
+            'readers': 7,
+            'writers': 3,
+            'read-min-time': 500,
+            'read-max-time': 1500,
+            'write-min-time': 1000,
+            'write-max-time': 3000,
+            'priority': 'readers'
+        },
+        'writer-priority': {
+            'readers': 7,
+            'writers': 3,
+            'read-min-time': 500,
+            'read-max-time': 1500,
+            'write-min-time': 1000,
+            'write-max-time': 3000,
+            'priority': 'writers'
+        }
+    },
+    'dining-philosophers': {
+        'deadlock-prone': {
+            'philosophers': 5,
+            'think-min-time': 1000,
+            'think-max-time': 3000,
+            'eat-min-time': 1000,
+            'eat-max-time': 3000,
+            'strategy': 'naive'
+        },
+        'deadlock-free': {
+            'philosophers': 5,
+            'think-min-time': 1000,
+            'think-max-time': 3000,
+            'eat-min-time': 1000,
+            'eat-max-time': 3000,
+            'strategy': 'asymmetric'
         }
     }
-    
-    if (!this.running) {
-        // Clean up if simulation stopped
-        this.putDownForks(philosopherId);
-        return;
-    }
-    
-    // Eating
-    this.updatePhilosopherStatus(philosopherId, 'eating');
-    logMessage('dining-philosophers-log', `Philosopher ${philosopherId+1} is eating`);
-    await sleep(this.eatingTime);
-    
-    if (!this.running) {
-        // Clean up if simulation stopped
-        this.putDownForks(philosopherId);
-        return;
-    }
-    
-    // Put down forks
-    this.putDownForks(philosopherId);
-    
-    // Start the cycle again
-    if (this.running) {
-        this.philosopherCycle(philosopherId);
-    }
-}
+};
 
-start() {
-    if (this.running) return;
-    
-    this.running = true;
-    this.setup();
-    
-    document.getElementById('start-dining-philosophers').disabled = true;
-    document.getElementById('stop-dining-philosophers').disabled = false;
-    
-    logMessage('dining-philosophers-log', 'Simulation started.');
-    
-    // Start all philosophers' cycles with a random delay
-    this.philosophers.forEach(philosopher => {
-        const startDelay = randomInt(0, 1000);
-        setTimeout(() => this.philosopherCycle(philosopher.id), startDelay);
+document.querySelectorAll('.preset-button').forEach(button => {
+    button.addEventListener('click', () => {
+        const problemId = button.getAttribute('data-problem');
+        const presetName = button.getAttribute('data-preset');
+        
+        if (presets[problemId] && presets[problemId][presetName]) {
+            applyPreset(problemId, presets[problemId][presetName]);
+        }
     });
-}
-
-stop() {
-    this.running = false;
-    
-    document.getElementById('start-dining-philosophers').disabled = false;
-    document.getElementById('stop-dining-philosophers').disabled = true;
-    
-    logMessage('dining-philosophers-log', 'Simulation stopped.');
-    
-    // Reset all forks
-    this.forks.forEach(fork => {
-        fork.inUse = false;
-        fork.element.classList.remove('in-use');
-    });
-    
-    // Reset all philosophers
-    this.philosophers.forEach(philosopher => {
-        this.updatePhilosopherStatus(philosopher.id, 'thinking');
-    });
-}
-}
-
-// Initialize all simulations when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-const producerConsumer = new ProducerConsumerSimulation();
-const readersWriters = new ReadersWritersSimulation();
-const diningPhilosophers = new DiningPhilosophersSimulation();
 });
+
+document.querySelectorAll('.export-log').forEach(button => {
+    button.addEventListener('click', () => {
+        const problemId = button.getAttribute('data-problem');
+        const logContainer = document.getElementById(`${problemId}-log`);
+        
+        if (logContainer) {
+            const logText = Array.from(logContainer.children)
+                .map(entry => entry.textContent)
+                .join('\n');
+            
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${problemId}-simulation-log.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    });
+});
+
+function adjustForScreenSize() {
+    const smallScreen = window.innerWidth < 768;
+    
+    const tables = document.querySelectorAll('.dp-table');
+    tables.forEach(table => {
+        if (smallScreen) {
+            table.style.transform = 'scale(0.7)';
+        } else {
+            table.style.transform = 'scale(1)';
+        }
+    });
+    
+    const logs = document.querySelectorAll('.log-container');
+    logs.forEach(log => {
+        if (smallScreen) {
+            log.style.maxHeight = '150px';
+        } else {
+            log.style.maxHeight = '300px';
+        }
+    });
+}
+
+window.addEventListener('resize', adjustForScreenSize);
+adjustForScreenSize();
