@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OS File Directory Structure Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            background-color: #f1f1f1;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background-color: transparent;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 10px;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background-color: #e0e0e0;
+        }
+
+        .tab-btn.active {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            min-height: 400px;
+            position: relative;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .description {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        button, input[type="text"] {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+        }
+
+        .filesystem {
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 15px;
+            min-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+
+        /* Single-Level Directory Styles */
+        .single-level-file {
+            padding: 8px;
+            margin: 4px 0;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Hashed Directory Styles */
+        .hash-table {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .hash-bucket {
+            background-color: #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .hash-bucket h4 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .hash-file {
+            background-color: #dee2e6;
+            padding: 5px;
+            margin: 3px 0;
+            border-radius: 2px;
+        }
+
+        /* Indexed Directory Styles */
+        .index-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .index-table th, .index-table td {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .index-table th {
+            background-color: #e9ecef;
+        }
+
+        /* Hierarchical Directory Styles */
+        .folder {
+            margin-left: 20px;
+        }
+
+        .folder-item {
+            padding: 5px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .folder-name {
+            font-weight: bold;
+            color: #0056b3;
+        }
+
+        .file-name {
+            color: #212529;
+        }
+
+        .folder-contents {
+            display: none;
+            margin-left: 20px;
+        }
+
+        .folder-contents.show {
+            display: block;
+        }
+
+        .visualization-container {
+            margin-top: 20px;
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OS File Directory Structure Simulation</h1>
+        
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="single-level">Single-Level</button>
+            <button class="tab-btn" data-tab="hashed">Hashed</button>
+            <button class="tab-btn" data-tab="indexed">Indexed</button>
+            <button class="tab-btn" data-tab="hierarchical">Hierarchical</button>
+        </div>
+        
+        <!-- Single-Level Directory -->
+        <div class="tab-content active" id="single-level">
+            <div class="description">
+                <h2>Single-Level Directory Structure</h2>
+                <p>A single-level directory system contains all files in one directory. It's simple but limiting, as all filenames must be unique and organization is difficult with many files.</p>
+            </div>
+            
+            <div class="controls">
+                <input type="text" id="single-level-filename" placeholder="Enter filename">
+                <button id="single-level-add">Add File</button>
+                <button id="single-level-remove">Remove File</button>
+                <button id="single-level-search">Search File</button>
+            </div>
+            
+            <div class="filesystem" id="single-level-fs">
+                <!-- Files will be displayed here -->
+            </div>
+        </div>
+        
+        <!-- Hashed Directory -->
+        <div class="tab-content" id="hashed">
+            <div class="description">
+                <h2>Hashed Directory Structure</h2>
+                <p>A hashed directory uses a hash function to determine the location of files, enabling faster lookups. Files are distributed into buckets based on their hash value.</p>
+            </div>
+            
+            <div class="controls">
+                <input type="text" id="hashed-filename" placeholder="Enter filename">
+                <button id="hashed-add">Add File</button>
+                <button id="hashed-remove">Remove File</button>
+                <button id="hashed-search">Search File</button>
+            </div>
+            
+            <div class="filesystem" id="hashed-fs">
+                <div class="hash-table">
+                    <!-- Hash buckets will be generated here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Indexed Directory -->
+        <div class="tab-content" id="indexed">
+            <div class="description">
+                <h2>Indexed Directory Structure</h2>
+                <p>An indexed directory structure maintains an index table with pointers to file locations. This provides fast lookups and allows for more flexible storage structures.</p>
+            </div>
+            
+            <div class="controls">
+                <input type="text" id="indexed-filename" placeholder="Enter filename">
+                <button id="indexed-add">Add File</button>
+                <button id="indexed-remove">Remove File</button>
+                <button id="indexed-search">Search File</button>
+            </div>
+            
+            <div class="filesystem" id="indexed-fs">
+                <table class="index-table">
+                    <thead>
+                        <tr>
+                            <th>File ID</th>
+                            <th>File Name</th>
+                            <th>Location (Block #)</th>
+                            <th>Size (KB)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="indexed-table-body">
+                        <!-- Index entries will be added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Hierarchical Directory -->
+        <div class="tab-content" id="hierarchical">
+            <div class="description">
+                <h2>Hierarchical Directory Structure</h2>
+                <p>A hierarchical directory structure organizes files in a tree-like structure with directories and subdirectories. This allows for better organization and file management.</p>
+            </div>
+            
+            <div class="controls">
+                <input type="text" id="hierarchical-path" placeholder="Path (e.g., /documents/work/file.txt)">
+                <button id="hierarchical-add">Add File/Folder</button>
+                <button id="hierarchical-remove">Remove</button>
+                <button id="hierarchical-search">Search</button>
+            </div>
+            
+            <div class="filesystem" id="hierarchical-fs">
+                <div class="folder-item" data-path="/">
+                    <span class="folder-name">/ (root)</span>
+                    <div class="folder-contents show" id="root-folder">
+                        <!-- Folders and files will be added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab Functionality
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // Add active class to clicked tab
+                button.classList.add('active');
+                document.getElementById(button.dataset.tab).classList.add('active');
+            });
+        });
+
+        // --------------------------------
+        // Single-Level Directory Implementation
+        // --------------------------------
+        const singleLevelFiles = new Set();
+        const singleLevelFs = document.getElementById('single-level-fs');
+        
+        // Add file to single-level directory
+        document.getElementById('single-level-add').addEventListener('click', () => {
+            const filename = document.getElementById('single-level-filename').value.trim();
+            if (!filename) {
+                alert('Please enter a filename');
+                return;
+            }
+            
+            if (singleLevelFiles.has(filename)) {
+                alert('File already exists in the directory');
+                return;
+            }
+            
+            singleLevelFiles.add(filename);
+            updateSingleLevelDisplay();
+            document.getElementById('single-level-filename').value = '';
+        });
+        
+        // Remove file from single-level directory
+        document.getElementById('single-level-remove').addEventListener('click', () => {
+            const filename = document.getElementById('single-level-filename').value.trim();
+            if (!filename) {
+                alert('Please enter a filename to remove');
+                return;
+            }
+            
+            if (!singleLevelFiles.has(filename)) {
+                alert('File does not exist in the directory');
+                return;
+            }
+            
+            singleLevelFiles.delete(filename);
+            updateSingleLevelDisplay();
+            document.getElementById('single-level-filename').value = '';
+        });
+        
+        // Search file in single-level directory
+        document.getElementById('single-level-search').addEventListener('click', () => {
+            const filename = document.getElementById('single-level-filename').value.trim();
+            if (!filename) {
+                alert('Please enter a filename to search');
+                return;
+            }
+            
+            if (singleLevelFiles.has(filename)) {
+                alert(`File '${filename}' found!`);
+                // Highlight the found file
+                const fileElement = document.querySelector(`[data-filename="${filename}"]`);
+                fileElement.style.backgroundColor = '#a3cfbb';
+                setTimeout(() => {
+                    fileElement.style.backgroundColor = '#e9ecef';
+                }, 2000);
+            } else {
+                alert(`File '${filename}' not found.`);
+            }
+        });
+        
+        function updateSingleLevelDisplay() {
+            singleLevelFs.innerHTML = '';
+            if (singleLevelFiles.size === 0) {
+                singleLevelFs.innerHTML = '<p>No files in the directory</p>';
+                return;
+            }
+            
+            const sortedFiles = Array.from(singleLevelFiles).sort();
+            sortedFiles.forEach(filename => {
+                const fileElement = document.createElement('div');
+                fileElement.className = 'single-level-file';
+                fileElement.dataset.filename = filename;
+                fileElement.innerHTML = `
+                    <span>${filename}</span>
+                    <span>Modified: ${new Date().toLocaleDateString()}</span>
+                `;
+                singleLevelFs.appendChild(fileElement);
+            });
+        }
+        
+        // Initial display
+        updateSingleLevelDisplay();
+
+        // --------------------------------
+        // Hashed Directory Implementation
+        // --------------------------------
+        const hashBuckets = {};
+        const NUM_BUCKETS = 8;
+        
+        // Initialize hash buckets
+        function initHashBuckets() {
+            const hashTable = document.querySelector('.hash-table');
+            hashTable.innerHTML = '';
+            
+            for (let i = 0; i < NUM_BUCKETS; i++) {
+                hashBuckets[i] = [];
+                
+                const bucketElement = document.createElement('div');
+                bucketElement.className = 'hash-bucket';
+                bucketElement.id = `bucket-${i}`;
+                bucketElement.innerHTML = `<h4>Bucket ${i}</h4>`;
+                hashTable.appendChild(bucketElement);
+            }
+        }
+        
+        // Simple hash function
+        function hashFunction(filename) {
+            let hash = 0;
+            for (let i = 0; i < filename.length; i++) {
+                hash += filename.charCodeAt(i);
+            }
+            return hash % NUM_BUCKETS;
+        }
+        
+        // Add file to hashed directory
+        document.getElementById('hashed-add').addEventListener('click', () => {
+            const filename = document.getElementById('hashed-filename').value.trim();
+            if (!filename) {
+                alert('Please enter a filename');
+                return;
+            }
+            
+            const bucketIndex = hashFunction(filename);
+            
+            // Check if file already exists in the bucket
+            if (hashBuckets[bucketIndex].includes(filename)) {
+                alert('File already exists in the directory');
+                return;
+            }
+            
+            hashBuckets[bucketIndex].push(filename);
+            updateHashBucketDisplay();
+            document.getElementById('hashed-filename').value = '';
+        });
+        
+        // Remove file from hashed directory
+        document.getElementById('hashed-remove').addEventListener('click', () => {
+            const filename = document.getElementById('hashed-filename').value.trim();
+            if (!filename) {
+                alert('Please enter a filename to remove');
+                return;
+            }
+            
+            const bucketIndex = hashFunction(filename);
+            const fileIndex = hashBuckets[bucketIndex].indexOf(filename);
+            
+            if (fileIndex === -1) {
+                alert('File does not exist in the directory');
+                return;
+            }
+            
+            hashBuckets[bucketIndex].splice(fileIndex, 1);
+            updateHashBucketDisplay();
+            document.getElementById('hashed-filename').value = '';
+        });
+        
+        // Search file in hashed directory
+        document.getElementById('hashed-search').addEventListener('click', () => {
+            const filename = document.getElementById('hashed-filename').value.trim();
+            if (!filename) {
+                alert('Please enter a filename to search');
+                return;
+            }
+            
+            const bucketIndex = hashFunction(filename);
+            
+            if (hashBuckets[bucketIndex].includes(filename)) {
+                alert(`File '${filename}' found in bucket ${bucketIndex}!`);
+                // Highlight the found file
+                const fileElement = document.querySelector(`[data-hash-filename="${filename}"]`);
+                fileElement.style.backgroundColor = '#a3cfbb';
+                setTimeout(() => {
+                    fileElement.style.backgroundColor = '#dee2e6';
+                }, 2000);
+            } else {
+                alert(`File '${filename}' not found.`);
+            }
+        });
+        
+        function updateHashBucketDisplay() {
+            for (let i = 0; i < NUM_BUCKETS; i++) {
+                const bucketElement = document.getElementById(`bucket-${i}`);
+                
+                // Clear previous files in the bucket display (keep the header)
+                while (bucketElement.childNodes.length > 1) {
+                    bucketElement.removeChild(bucketElement.lastChild);
+                }
+                
+                // Add files to the bucket display
+                hashBuckets[i].forEach(filename => {
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'hash-file';
+                    fileElement.dataset.hashFilename = filename;
+                    fileElement.textContent = filename;
+                    bucketElement.appendChild(fileElement);
+                });
+            }
+        }
+        
+        // Initialize hash buckets
+        initHashBuckets();
+
+        // --------------------------------
+        // Indexed Directory Implementation
+        // --------------------------------
+        const indexedFiles = [];
+        let nextFileId = 1;
+        
+        // Add file to indexed directory
+        document.getElementById('indexed-add').addEventListener('click', () => {
+            const filename = document.getElementById('indexed-filename').value.trim();
+            if (!filename) {
+                alert('Please enter a filename');
+                return;
+            }
+            
+            // Check if file already exists
+            if (indexedFiles.some(file => file.name === filename)) {
+                alert('File already exists in the directory');
+                return;
+            }
+            
+            // Generate random block location and size
+            const block = Math.floor(Math.random() * 1000) + 1;
+            const size = Math.floor(Math.random() * 100) + 1;
+            
+            // Add file to index
+            indexedFiles.push({
+                id: nextFileId++,
+                name: filename,
+                block: block,
+                size: size
+            });
+            
+            updateIndexedDisplay();
+            document.getElementById('indexed-filename').value = '';
+        });
+        
+        // Remove file from indexed directory
+        document.getElementById('indexed-remove').addEventListener('click', () => {
+            const filename = document.getElementById('indexed-filename').value.trim();
+            if (!filename) {
+                alert('Please enter a filename to remove');
+                return;
+            }
+            
+            const fileIndex = indexedFiles.findIndex(file => file.name === filename);
+            
+            if (fileIndex === -1) {
+                alert('File does not exist in the directory');
+                return;
+            }
+            
+            indexedFiles.splice(fileIndex, 1);
+            updateIndexedDisplay();
+            document.getElementById('indexed-filename').value = '';
+        });
+        
+        // Search file in indexed directory
+        document.getElementById('indexed-search').addEventListener('click', () => {
+            const filename = document.getElementById('indexed-filename').value.trim();
+            if (!filename) {
+                alert('Please enter a filename to search');
+                return;
+            }
+            
+            const file = indexedFiles.find(file => file.name === filename);
+            
+            if (file) {
+                alert(`File '${filename}' found! Located at block ${file.block}, size: ${file.size}KB`);
+                // Highlight the found file row
+                const fileRow = document.querySelector(`tr[data-file-id="${file.id}"]`);
+                fileRow.style.backgroundColor = '#a3cfbb';
+                setTimeout(() => {
+                    fileRow.style.backgroundColor = '';
+                }, 2000);
+            } else {
+                alert(`File '${filename}' not found.`);
+            }
+        });
+        
+        function updateIndexedDisplay() {
+            const tableBody = document.getElementById('indexed-table-body');
+            tableBody.innerHTML = '';
+            
+            if (indexedFiles.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = '<td colspan="4">No files in the directory</td>';
+                tableBody.appendChild(emptyRow);
+                return;
+            }
+            
+            // Sort files by ID for consistent display
+            const sortedFiles = [...indexedFiles].sort((a, b) => a.id - b.id);
+            
+            sortedFiles.forEach(file => {
+                const row = document.createElement('tr');
+                row.dataset.fileId = file.id;
+                row.innerHTML = `
+                    <td>${file.id}</td>
+                    <td>${file.name}</td>
+                    <td>${file.block}</td>
+                    <td>${file.size}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Initial indexed display
+        updateIndexedDisplay();
+
+        // --------------------------------
+        // Hierarchical Directory Implementation
+        // --------------------------------
+        const fileSystem = {
+            name: 'root',
+            type: 'folder',
+            children: {}
+        };
+        
+        // Process path and add file/folder
+        document.getElementById('hierarchical-add').addEventListener('click', () => {
+            const path = document.getElementById('hierarchical-path').value.trim();
+            if (!path) {
+                alert('Please enter a valid path');
+                return;
+            }
+            
+            // Process path (e.g., /documents/work/file.txt)
+            const pathParts = path.split('/').filter(part => part);
+            
+            if (pathParts.length === 0) {
+                alert('Please enter a valid path');
+                return;
+            }
+            
+            const isFile = pathParts[pathParts.length - 1].includes('.');
+            addToFileSystem(pathParts, isFile);
+            updateHierarchicalDisplay();
+            document.getElementById('hierarchical-path').value = '';
+        });
+        
+        // Process path and remove file/folder
+        document.getElementById('hierarchical-remove').addEventListener('click', () => {
+            const path = document.getElementById('hierarchical-path').value.trim();
+            if (!path) {
+                alert('Please enter a valid path');
+                return;
+            }
+            
+            // Process path (e.g., /documents/work/file.txt)
+            const pathParts = path.split('/').filter(part => part);
+            
+            if (pathParts.length === 0) {
+                alert('Please enter a valid path');
+                return;
+            }
+            
+            removeFromFileSystem(pathParts);
+            updateHierarchicalDisplay();
+            document.getElementById('hierarchical-path').value = '';
+        });
+        
+        // Search in hierarchical structure
+        document.getElementById('hierarchical-search').addEventListener('click', () => {
+            const path = document.getElementById('hierarchical-path').value.trim();
+            if (!path) {
+                alert('Please enter a valid path to search');
+                return;
+            }
+            
+            const pathParts = path.split('/').filter(part => part);
+            const found = searchInFileSystem(pathParts);
+            
+            if (found) {
+                alert(`${pathParts.join('/')} found!`);
+                
+                // Expand folders to show the found item
+                expandToPath(pathParts);
+                
+                // Highlight the found item
+                const itemSelector = pathParts.map((part, index) => {
+                    return `[data-path="/${pathParts.slice(0, index + 1).join('/')}"]`;
+                }).pop();
+                
+                const item = document.querySelector(itemSelector);
+                if (item) {
+                    item.style.backgroundColor = '#a3cfbb';
+                    setTimeout(() => {
+                        item.style.backgroundColor = '';
+                    }, 2000);
+                }
+            } else {
+                alert(`${pathParts.join('/')} not found.`);
+            }
+        });
+        
+        function addToFileSystem(pathParts, isFile) {
+            let currentLevel = fileSystem.children;
+            let currentPath = '';
+            
+            // Create folders in the path if they don't exist
+            for (let i = 0; i < pathParts.length - 1; i++) {
+                const part = pathParts[i];
+                currentPath += '/' + part;
+                
+                if (!currentLevel[part]) {
+                    currentLevel[part] = {
+                        name: part,
+                        type: 'folder',
+                        path: currentPath,
+                        children: {}
+                    };
+                }
+                
+                currentLevel = currentLevel[part].children;
+            }
+            
+            // Add the final file or folder
+            const lastPart = pathParts[pathParts.length - 1];
+            currentPath += '/' + lastPart;
+            
+            if (!currentLevel[lastPart]) {
+                currentLevel[lastPart] = {
+                    name: lastPart,
+                    type: isFile ? 'file' : 'folder',
+                    path: currentPath,
+                    children: isFile ? null : {}
+                };
+            } else if (currentLevel[lastPart].type === 'folder' && isFile) {
+                alert('Cannot create a file with the same name as an existing folder');
+            } else if (currentLevel[lastPart].type === 'file' && !isFile) {
+                alert('Cannot create a folder with the same name as an existing file');
+            }
+        }
+        
+        function removeFromFileSystem(pathParts) {
+            if (pathParts.length === 0) return false;
+            
+            let currentLevel = fileSystem.children;
+            let parentLevel = null;
+            let parentName = null;
+            
+            // Navigate to the parent of the item to remove
+            for (let i = 0; i < pathParts.length - 1; i++) {
+                const part = pathParts[i];
+                
+                if (!currentLevel[part]) {
+                    alert(`Path ${pathParts.join('/')} does not exist`);
+                    return false;
+                }
+                
+                parentLevel = currentLevel;
+                parentName = part;
+                currentLevel = currentLevel[part].children;
+            }
+            
+            // Remove the item
+            const itemToRemove = pathParts[pathParts.length - 1];
+            
+            if (pathParts.length === 1) {
+                // Removing from root
+                if (fileSystem.children[itemToRemove]) {
+                    delete fileSystem.children[itemToRemove];
+                    return true;
+                } else {
+                    alert(`${itemToRemove} does not exist in the root directory`);
+                    return false;
+                }
+            } else if (currentLevel && currentLevel[itemToRemove]) {
+                delete currentLevel[itemToRemove];
+                return true;
+            } else {
+                alert(`${pathParts.join('/')} does not exist`);
+                return false;
+            }
+        }
+        
+        function searchInFileSystem(pathParts) {
+            let currentLevel = fileSystem.children;
+            
+            for (let i = 0; i < pathParts.length; i++) {
+                const part = pathParts[i];
+                
+                if (!currentLevel[part]) {
+                    return false;
+                }
+                
+                currentLevel = currentLevel[part].children;
+            }
+            
+            return true;
+        }
+        
+        function expandToPath(pathParts) {
+            let currentPath = '';
+            
+            // Expand each folder in the path
+            for (let i = 0; i < pathParts.length; i++) {
+                currentPath += '/' + pathParts[i];
+                const folderContents = document.querySelector(`[data-path="${currentPath}"] + .folder-contents`);
+                
+                if (folderContents) {
+                    folderContents.classList.add('show');
+                }
+            }
+        }
+        
+        function updateHierarchicalDisplay() {
+            const rootFolder = document.getElementById('root-folder');
+            rootFolder.innerHTML = '';
+            
+            // Render children of root
+            renderFolder(fileSystem.children, rootFolder, '');
+            
+            // Add click event listeners for folders
+            document.querySelectorAll('.folder-name').forEach(folder => {
+                folder.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const contents = folder.nextElementSibling;
+                    contents.classList.toggle('show');
+                });
+            });
+        }
+        
+        function renderFolder(items, parentElement, parentPath) {
+            // Sort items: folders first, then files, both alphabetically
+            const sortedItems = Object.entries(items).sort((a, b) => {
+                // If types are different, folders come first
+                if (a[1].type !== b[1].type) {
+                    return a[1].type === 'folder' ? -1 : 1;
+                }
+                // Otherwise, sort alphabetically
+                return a[0].localeCompare(b[0]);
+            });
+            
+            sortedItems.forEach(([name, item]) => {
+                const itemPath = parentPath + '/' + name;
+                
+                if (item.type === 'folder') {
+                    const folderElement = document.createElement('div');
+                    folderElement.className = 'folder-item';
+                    folderElement.dataset.path = itemPath;
+                    
+                    const folderName = document.createElement('span');
+                    folderName.className = 'folder-name';
+                    folderName.textContent = `📁 ${name}`;
+                    
+                    const folderContents = document.createElement('div');
+                    folderContents.className = 'folder-contents';
+                    
+                    folderElement.appendChild(folderName);
+                    
+                    // Recursively render children
+                    if (item.children && Object.keys(item.children).length > 0) {
+                        renderFolder(item.children, folderContents, itemPath);
+                    } else {
+                        folderContents.innerHTML = '<div class="empty-folder">(Empty folder)</div>';
+                    }
+                    
+                    folderElement.appendChild(folderContents);
+                    parentElement.appendChild(folderElement);
+                } else {
+                    // Render file
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'folder-item';
+                    fileElement.dataset.path = itemPath;
+                    
+                    const fileName = document.createElement('span');
+                    fileName.className = 'file-name';
+                    fileName.textContent = `📄 ${name}`;
+                    
+                    fileElement.appendChild(fileName);
+                    parentElement.appendChild(fileElement);
+                }
+            });
+        }
+        
+        // Initial hierarchical display
+        updateHierarchicalDisplay();
+
+        // Add some pre-populated files for demonstration
+        
+        // Single-level files
+        ['document.txt', 'image.jpg', 'script.js', 'data.csv'].forEach(file => {
+            singleLevelFiles.add(file);
+        });
+        updateSingleLevelDisplay();
+        
+        // Hashed files
+        ['profile.jpg', 'notes.txt', 'report.pdf', 'config.xml', 'backup.zip'].forEach(file => {
+const bucketIndex = hashFunction(file);
+            hashBuckets[bucketIndex].push(file);
+        });
+        updateHashBucketDisplay();
+        
+        // Indexed files
+        ['resume.pdf', 'budget.xlsx', 'presentation.pptx', 'code.py', 'database.db'].forEach((file, index) => {
+            const block = Math.floor(Math.random() * 1000) + 1;
+            const size = Math.floor(Math.random() * 100) + 1;
+            
+            indexedFiles.push({
+                id: nextFileId++,
+                name: file,
+                block: block,
+                size: size
+            });
+        });
+        updateIndexedDisplay();
+        
+        // Hierarchical structure
+        [
+            'documents/report.docx',
+            'documents/resume.pdf',
+            'pictures/vacation',
+            'pictures/vacation/beach.jpg',
+            'pictures/vacation/mountain.jpg',
+            'pictures/profile.png',
+            'music/playlist',
+            'music/playlist/song1.mp3',
+            'music/playlist/song2.mp3',
+            'code/web/index.html',
+            'code/web/styles.css',
+            'code/web/script.js',
+            'code/python/app.py',
+            'downloads/package.zip'
+        ].forEach(path => {
+            const pathParts = path.split('/');
+            const isFile = pathParts[pathParts.length - 1].includes('.');
+            addToFileSystem(pathParts, isFile);
+        });
+        updateHierarchicalDisplay();
+    </script>
+</body>
+</html>
