@@ -34,6 +34,7 @@
                         <p>
                             All the segments or the pages of the program need not be on the main memory everytime.<br>
                             Only the needed portions are loaded onto the main memory and then swapped in and out of the memory according to the requirements.<br>
+                          
                         </p>
                     </div>
                 </div>
@@ -64,7 +65,8 @@
                         <h3>Segmentation</h3>
                         <p>A memory management scheme in which the program is divided into segments (code, data, stack, heap) of varying sizes.</p>
                         <p>Now those segments are loaded onto the RAM, and they can be loaded non-contiguously.</p>
-
+                          <p>The OS maintains a Segment Table that holds the information of the program's segments, that is, the base address and the limit of the address alloted to it.<br><br> 
+                          </p>     
                         <h4>Address Translation</h4>
                         <p>Logical Address = &lt;Segment Number, Offset&gt;</p>
                         <ul>
@@ -76,6 +78,7 @@
                     <div class="info-card">
                         <h3>Paging</h3>
                         <p>Divides physical memory into fixed-size blocks called frames and logical memory into blocks of the same size called pages.</p>
+                        <p>The OS maintains a Page Table containing the page index, frame number, valid/invalid bit etc.</p>
                         <h4>Address Translation</h4>
                         <p>Logical Address = &lt;Page Number, Offset&gt;</p>
                         <ul>
