@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentProcess = null;
     let quantumProgress = 0;
     let simulationTimer;
-    timeQuantum=timeQuantum-1;
+   timeQuantum=timeQuantum-1;
     
     const colors = [
       "#FF5733", "#33FF57", "#3357FF", "#F3FF33", 
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update timeQuantum when changed
     timeQuantumInput.addEventListener('change', function() {
-      timeQuantum = parseInt(this.value) || 1;
+      timeQuantum = parseInt(this.value)-1 || 1;
       if (timeQuantum < 1) {
         timeQuantum = 1;
         this.value = 1;
