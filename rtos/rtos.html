@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RTOS Simulator</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --secondary: #4ade80;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --light: #f3f4f6;
+      --dark: #1f2937;
+      --gray: #6b7280;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f8fafc;
+      color: var(--dark);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    .navbar {
+      background-color: var(--dark);
+      color: white;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .navbar h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    
+    .navbar .controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    main {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      flex-grow: 1;
+    }
+    
+    .sidebar {
+      background-color: var(--light);
+      border-right: 1px solid #e5e7eb;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    
+    .sidebar h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+    
+    .task-form {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-group {
+      margin-bottom: 0.75rem;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+    }
+    
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+    }
+    
+    button {
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.25rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    .btn-danger {
+      background-color: var(--danger);
+      color: white;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .stat-card {
+      background-color: white;
+      border-radius: 0.25rem;
+      padding: 0.75rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .stat-card h3 {
+      font-size: 0.75rem;
+      color: var(--gray);
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-card p {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    
+    .tasks-list {
+      list-style: none;
+    }
+    
+    .task-item {
+      background-color: white;
+      border-radius: 0.25rem;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .task-item h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .task-item p {
+      font-size: 0.75rem;
+      color: var(--gray);
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .priority-high {
+      color: var(--danger);
+    }
+    
+    .priority-medium {
+      color: var(--warning);
+    }
+    
+    .priority-low {
+      color: var(--secondary);
+    }
+    
+    .visualization {
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .time-display {
+      background-color: white;
+      padding: 1rem;
+      border-radius: 0.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .time-display h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    
+    .time-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .cpu-container {
+      background-color: white;
+      border-radius: 0.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 1rem;
+    }
+    
+    .cpu-container h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+    
+    .cpu-core {
+      height: 3rem;
+      background-color: var(--light);
+      border-radius: 0.25rem;
+      margin-bottom: 1rem;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .cpu-label {
+      position: absolute;
+      left: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-weight: 600;
+      font-size: 0.875rem;
+      z-index: 2;
+    }
+    
+    .task-execution {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 500;
+      font-size: 0.875rem;
+      transition: width 0.3s ease;
+    }
+    
+    .gantt-chart {
+      background-color: white;
+      border-radius: 0.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 1rem;
+      margin-top: 1rem;
+      overflow-x: auto;
+    }
+    
+    .gantt-chart h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+    
+    .gantt-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .gantt-row {
+      display: flex;
+      height: 2rem;
+      align-items: center;
+    }
+    
+    .gantt-label {
+      width: 100px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    .gantt-timeline {
+      flex-grow: 1;
+      height: 100%;
+      display: flex;
+      background-color: var(--light);
+      border-radius: 0.25rem;
+      overflow: hidden;
+    }
+    
+    .gantt-task {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    
+    .memory-chart {
+      background-color: white;
+      border-radius: 0.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .memory-chart h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+    
+    .memory-blocks {
+      display: flex;
+      gap: 0.25rem;
+      height: 2rem;
+    }
+    
+    .memory-block {
+      height: 100%;
+      flex-grow: 1;
+      border-radius: 0.25rem;
+      background-color: var(--light);
+      position: relative;
+      transition: background-color 0.3s ease;
+    }
+    
+    .footer {
+      background-color: var(--dark);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 0.875rem;
+    }
+    
+    @media (max-width: 768px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+      
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>RTOS Simulator</h1>
+    <div class="controls">
+      <button id="reset-btn" class="btn-danger">Reset Simulation</button>
+    </div>
+  </nav>
+  
+  <main>
+    <section class="sidebar">
+      <h2>Task Management</h2>
+      
+      <form id="task-form" class="task-form">
+        <div class="form-group">
+          <label for="task-name">Task Name</label>
+          <input type="text" id="task-name" placeholder="Enter task name" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="task-priority">Priority</label>
+          <select id="task-priority" required>
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="task-burst">Execution Time (ms)</label>
+          <input type="number" id="task-burst" min="100" max="5000" value="1000" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="task-memory">Memory Required (KB)</label>
+          <input type="number" id="task-memory" min="10" max="1000" value="100" required>
+        </div>
+        
+        <button type="submit" class="btn-primary">Add Task</button>
+      </form>
+      
+      <div class="stats">
+        <div class="stat-card">
+          <h3>CPU Utilization</h3>
+          <p id="cpu-util">0%</p>
+        </div>
+        <div class="stat-card">
+          <h3>Memory Usage</h3>
+          <p id="memory-usage">0/4096 KB</p>
+        </div>
+        <div class="stat-card">
+          <h3>Tasks Running</h3>
+          <p id="tasks-running">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Tasks Waiting</h3>
+          <p id="tasks-waiting">0</p>
+        </div>
+      </div>
+      
+      <h2>Task Queue</h2>
+      <ul id="tasks-list" class="tasks-list">
+      </ul>
+    </section>
+    
+    <section class="visualization">
+      <div class="time-display">
+        <h2>Time: <span id="system-time">0</span> ms</h2>
+        <div class="time-controls">
+          <button id="start-btn" class="btn-primary">Start</button>
+          <button id="pause-btn" class="btn-primary" disabled>Pause</button>
+        </div>
+      </div>
+      
+      <div class="cpu-container">
+        <h2>CPU Cores</h2>
+        <div id="core-1" class="cpu-core">
+          <span class="cpu-label">Core 1</span>
+        </div>
+        <div id="core-2" class="cpu-core">
+          <span class="cpu-label">Core 2</span>
+        </div>
+      </div>
+      
+      <div class="gantt-chart">
+        <h2>Task Scheduling (Gantt Chart)</h2>
+        <div id="gantt-container" class="gantt-container">
+        </div>
+      </div>
+      
+      <div class="memory-chart">
+        <h2>Memory Utilization</h2>
+        <div id="memory-blocks" class="memory-blocks">
+        </div>
+      </div>
+    </section>
+  </main>
+  
+
+  <script>
+    class RTOSSimulator {
+      constructor() {
+        this.systemTime = 0;
+        this.running = false;
+        this.taskIdCounter = 1;
+        this.totalMemory = 4096; 
+        this.usedMemory = 0;
+        this.tasks = [];
+        this.runningTasks = [null, null]; 
+        this.taskHistory = []; 
+        
+        
+        this.timeDisplay = document.getElementById('system-time');
+        this.cpuUtil = document.getElementById('cpu-util');
+        this.memoryUsage = document.getElementById('memory-usage');
+        this.tasksRunning = document.getElementById('tasks-running');
+        this.tasksWaiting = document.getElementById('tasks-waiting');
+        this.tasksList = document.getElementById('tasks-list');
+        this.memoryBlocks = document.getElementById('memory-blocks');
+        this.ganttContainer = document.getElementById('gantt-container');
+        this.core1 = document.getElementById('core-1');
+        this.core2 = document.getElementById('core-2');
+        
+        this.startBtn = document.getElementById('start-btn');
+        this.pauseBtn = document.getElementById('pause-btn');
+        this.resetBtn = document.getElementById('reset-btn');
+        this.taskForm = document.getElementById('task-form');
+        
+        this.initMemoryBlocks();
+
+        this.bindEvents();
+      }
+      
+      initMemoryBlocks() {
+     
+        for (let i = 0; i < 40; i++) {
+          const block = document.createElement('div');
+          block.className = 'memory-block';
+          this.memoryBlocks.appendChild(block);
+        }
+      }
+      
+      bindEvents() {
+        this.startBtn.addEventListener('click', () => this.startSimulation());
+        this.pauseBtn.addEventListener('click', () => this.pauseSimulation());
+        this.resetBtn.addEventListener('click', () => this.resetSimulation());
+        this.taskForm.addEventListener('submit', (e) => this.handleTaskSubmit(e));
+      }
+      
+      startSimulation() {
+        if (!this.running) {
+          this.running = true;
+          this.startBtn.disabled = true;
+          this.pauseBtn.disabled = false;
+          this.tick();
+        }
+      }
+      
+      pauseSimulation() {
+        this.running = false;
+        this.startBtn.disabled = false;
+        this.pauseBtn.disabled = true;
+      }
+      
+      resetSimulation() {
+        this.pauseSimulation();
+        this.systemTime = 0;
+        this.taskIdCounter = 1;
+        this.tasks = [];
+        this.runningTasks = [null, null];
+        this.taskHistory = [];
+        this.usedMemory = 0;
+
+        this.updateUI();
+        this.clearCores();
+        this.ganttContainer.innerHTML = '';
+        this.tasksList.innerHTML = '';
+
+        const memoryBlocks = document.querySelectorAll('.memory-block');
+        memoryBlocks.forEach(block => {
+          block.style.backgroundColor = '';
+          block.style.border = '';
+          block.textContent = '';
+        });
+      }
+      
+      handleTaskSubmit(e) {
+        e.preventDefault();
+        
+        const nameInput = document.getElementById('task-name');
+        const priorityInput = document.getElementById('task-priority');
+        const burstInput = document.getElementById('task-burst');
+        const memoryInput = document.getElementById('task-memory');
+        
+        const task = {
+          id: this.taskIdCounter++,
+          name: nameInput.value,
+          priority: priorityInput.value,
+          burstTime: parseInt(burstInput.value),
+          remainingTime: parseInt(burstInput.value),
+          memoryRequired: parseInt(memoryInput.value),
+          state: 'waiting',
+          startTime: null,
+          completionTime: null
+        };
+
+        if (this.usedMemory + task.memoryRequired <= this.totalMemory) {
+          this.tasks.push(task);
+          this.usedMemory += task.memoryRequired;
+          this.updateMemoryUI();
+          this.addTaskToList(task);
+
+          this.addTaskToGantt(task);
+
+          nameInput.value = '';
+          priorityInput.value = 'medium';
+          burstInput.value = '1000';
+          memoryInput.value = '100';
+
+          this.sortTasksByPriority();
+
+          if (this.running) {
+            this.scheduleTasks();
+          }
+        } else {
+          alert('Not enough memory to add this task!');
+        }
+      }
+      
+      sortTasksByPriority() {
+
+        const priorityMap = { high: 3, medium: 2, low: 1 };
+        
+        this.tasks.sort((a, b) => {
+          if (a.state === 'completed' && b.state !== 'completed') return 1;
+          if (a.state !== 'completed' && b.state === 'completed') return -1;
+          return priorityMap[b.priority] - priorityMap[a.priority];
+        });
+      }
+      
+      addTaskToList(task) {
+        const li = document.createElement('li');
+        li.className = 'task-item';
+        li.id = `task-${task.id}`;
+        
+        li.innerHTML = `
+          <h3>
+            <span>${task.name}</span>
+            <span class="priority-${task.priority}">${task.priority.toUpperCase()}</span>
+          </h3>
+          <p>
+            <span>Time: ${task.remainingTime}/${task.burstTime} ms</span>
+            <span>Memory: ${task.memoryRequired} KB</span>
+          </p>
+        `;
+        
+        this.tasksList.appendChild(li);
+      }
+      
+      addTaskToGantt(task) {
+        const row = document.createElement('div');
+        row.className = 'gantt-row';
+        row.id = `gantt-task-${task.id}`;
+        
+        row.innerHTML = `
+          <div class="gantt-label">${task.name}</div>
+          <div class="gantt-timeline"></div>
+        `;
+        
+        this.ganttContainer.appendChild(row);
+      }
+      
+      updateTaskInList(task) {
+        const li = document.getElementById(`task-${task.id}`);
+        if (li) {
+          const stateText = task.state === 'running' ? 
+            `<span style="color: var(--primary);">RUNNING</span>` : 
+            `<span class="priority-${task.priority}">${task.priority.toUpperCase()}</span>`;
+          
+          li.innerHTML = `
+            <h3>
+              <span>${task.name}</span>
+              ${stateText}
+            </h3>
+            <p>
+              <span>Time: ${task.remainingTime}/${task.burstTime} ms</span>
+              <span>Memory: ${task.memoryRequired} KB</span>
+            </p>
+          `;
+
+          if (task.state === 'completed') {
+            li.style.opacity = '0.6';
+            this.tasksList.appendChild(li);
+          }
+        }
+      }
+      
+      updateGanttChart(task, coreIndex, timeStart, timeEnd) {
+        const ganttRow = document.getElementById(`gantt-task-${task.id}`);
+        if (ganttRow) {
+          const timeline = ganttRow.querySelector('.gantt-timeline');
+          const taskBlock = document.createElement('div');
+          taskBlock.className = 'gantt-task';
+
+          const color = coreIndex === 0 ? 'var(--primary)' : 'var(--secondary)';
+          taskBlock.style.backgroundColor = color;
+
+          const totalTimeWidth = 100;
+          const width = ((timeEnd - timeStart) / this.systemTime) * totalTimeWidth;
+          taskBlock.style.width = `${width}%`;
+
+          const marginLeft = (timeStart / this.systemTime) * totalTimeWidth;
+          taskBlock.style.marginLeft = `${marginLeft}%`;
+          
+          timeline.appendChild(taskBlock);
+        }
+      }
+      
+      scheduleTasks() {
+
+        const waitingTasks = this.tasks.filter(task => task.state === 'waiting');
+
+        for (let i = 0; i < this.runningTasks.length; i++) {
+          if (this.runningTasks[i] === null && waitingTasks.length > 0) {
+
+            const taskToRun = waitingTasks.shift();
+            taskToRun.state = 'running';
+            taskToRun.startTime = this.systemTime;
+            this.runningTasks[i] = taskToRun;
+
+            this.updateTaskInList(taskToRun);
+            this.updateCoreUI(i, taskToRun);
+          }
+        }
+        
+        this.updateUI();
+      }
+      
+      updateCoreUI(coreIndex, task) {
+        const core = coreIndex === 0 ? this.core1 : this.core2;
+
+        while (core.children.length > 1) {
+          core.removeChild(core.lastChild);
+        }
+        
+        if (task) {
+          const executionBlock = document.createElement('div');
+          executionBlock.className = 'task-execution';
+          executionBlock.style.width = '100%';
+
+          const colorMap = {
+            high: 'var(--danger)',
+            medium: 'var(--warning)',
+            low: 'var(--secondary)'
+          };
+          executionBlock.style.backgroundColor = colorMap[task.priority];
+          
+          executionBlock.textContent = `${task.name} (${task.remainingTime}ms)`;
+          core.appendChild(executionBlock);
+        }
+      }
+      
+      clearCores() {
+        [this.core1, this.core2].forEach(core => {
+          while (core.children.length > 1) {
+            core.removeChild(core.lastChild);
+          }
+        });
+      }
+      
+      updateMemoryUI() {
+
+        this.memoryUsage.textContent = `${this.usedMemory}/${this.totalMemory} KB`;
+
+        const memoryBlocks = document.querySelectorAll('.memory-block');
+        const blocksToFill = Math.floor((this.usedMemory / this.totalMemory) * memoryBlocks.length);
+        
+        memoryBlocks.forEach((block, index) => {
+          if (index < blocksToFill) {
+            block.style.backgroundColor = 'var(--primary)';
+          } else {
+            block.style.backgroundColor = '';
+          }
+        });
+      }
+      
+      updateUI() {
+  
+        this.timeDisplay.textContent = this.systemTime;
+
+        const runningTasksCount = this.runningTasks.filter(task => task !== null).length;
+        const cpuUtilization = Math.round((runningTasksCount / this.runningTasks.length) * 100);
+        this.cpuUtil.textContent = `${cpuUtilization}%`;
+
+        this.tasksRunning.textContent = runningTasksCount;
+        this.tasksWaiting.textContent = this.tasks.filter(task => task.state === 'waiting').length;
+
+        this.updateMemoryUI();
+      }
+      
+      tick() {
+        if (!this.running) return;
+        
+        this.systemTime += 100; 
+
+        for (let i = 0; i < this.runningTasks.length; i++) {
+          const task = this.runningTasks[i];
+          
+          if (task) {
+
+            task.remainingTime -= 100;
+
+            if (task.remainingTime <= 0) {
+              task.state = 'completed';
+              task.completionTime = this.systemTime;
+
+              this.updateGanttChart(task, i, task.startTime, task.completionTime);
+
+              this.usedMemory -= task.memoryRequired;
+              if (this.usedMemory < 0) this.usedMemory = 0;
+
+              this.updateTaskInList(task);
+
+              this.runningTasks[i] = null;
+              this.updateCoreUI(i, null);
+            } else {
+              
+              this.updateCoreUI(i, task);
+              this.updateTaskInList(task);
+            }
+          }
+        }
+
+        this.scheduleTasks();
+
+        this.updateUI();
+        
+        setTimeout(() => this.tick(), 100);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      window.rtosSimulator = new RTOSSimulator();
+
+      const sampleTasks = [
+        { name: 'System Monitor', priority: 'high', burstTime: 2000, memory: 200 },
+        { name: 'User Interface', priority: 'medium', burstTime: 1500, memory: 300 },
+        { name: 'Data Logger', priority: 'low', burstTime: 3000, memory: 150 }
+      ];
+      
+      setTimeout(() => {
+        sampleTasks.forEach(task => {
+          document.getElementById('task-name').value = task.name;
+          document.getElementById('task-priority').value = task.priority;
+          document.getElementById('task-burst').value = task.burstTime;
+          document.getElementById('task-memory').value = task.memory;
+          
+          document.getElementById('task-form').dispatchEvent(new Event('submit'));
+        });
+      }, 500);
+    });
+  </script>
+</body>
+</html>

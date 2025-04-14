@@ -4,79 +4,87 @@
     <meta charset="utf-8">
     <title>Banker's Algorithm Simulator</title>
     <style type="text/css">
-    body{
-  height:100%;
-  width:99%;
+/* General Responsive Adjustments */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  box-sizing: border-box;
 }
 
-button{
-  border-color: black;
-  padding: 7px;
-  border-radius: 15px;
-  background-color: orange;
+.input, .tables {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
 }
 
-td, th{
-  padding: 5px;
-  background-color: skyblue;
+.tables {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-input{
-  padding: 8px;
-  border-radius: 15px;
-  border-color: black;
+.allocation, .max, .need, .available {
+  width: 100%;
+  max-width: 400px;
+  margin: 10px;
 }
 
-.wrapper{
-  padding:10px;
+/* Responsive Table Styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
 }
 
-.tables{
-  padding-bottom:8%;
+th, td {
+  text-align: center;
 }
 
-.allocation{
-  width:23%;
-  float:left;
+/* Button & Input Responsive Styling */
+button, input {
+  font-size: 14px;
+  margin: 5px;
+  width: auto;
+  max-width: 100%;
 }
 
-.max{
-  width:23%;
-  float:left;
+button {
+  white-space: nowrap;
 }
 
-.need{
-  width:23%;
-  float:left;
+/* Center content properly on small screens */
+.wrapper h2 {
+  font-size: 20px;
+  padding: 10px 0;
 }
 
-.available{
-  width:23%;
-  float:left;
+/* Media query for screens smaller than 600px */
+@media (max-width: 600px) {
+  .wrapper h2 {
+    font-size: 18px;
+  }
+
+  button {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  input {
+    padding: 6px;
+    font-size: 13px;
+  }
+
+  .input center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .cname:hover {
+    font-size: 20px;
+  }
 }
 
-.input{
-  padding:20px;
-}
-
-.seq{
-  padding-top:3%;
-}
-
-.comparison{
-  padding-top: 10%;
-  padding-left: 7%;
-}
-
-.cname{
-  color: white;
-  text-decoration: none;
-}
-
-.cname:hover{
-  color:black;
-  font-size: 24px;
-}
     </style>
     <script>
         function validation(){
@@ -246,7 +254,7 @@ function find_sequence(){
   </head>
   <body>
     <div class="wrapper">
-      <center><h2>Banker's Algorithm Simulator</h2><a class="cname" title="Creator" href="http://fsociety.co.in">lucifer</a></center>
+      <center><h2>Banker's Algorithm Simulator</h2></center>
     </div>
     <div class="input">
       <center>

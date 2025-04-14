@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Deadlock Detection</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -10,32 +11,61 @@
       color: #f1f1f1;
       text-align: center;
       padding: 20px;
+      margin: 0;
     }
 
     h1 {
       color: #00ffcc;
+      font-size: 2rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    input[type="text"] {
+      width: 80%;
+      max-width: 300px;
+      padding: 8px;
+      background-color: #111;
+      border: 1px solid #777;
+      color: white;
+      text-align: center;
+      margin-bottom: 20px;
+      border-radius: 5px;
+    }
+
+    .tables {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 30px;
+      margin: 20px 0;
     }
 
     table {
-      margin: 20px auto;
       border-collapse: collapse;
       background-color: #2d2d44;
       border: 1px solid #444;
+      min-width: 300px;
+      overflow-x: auto;
     }
 
     th, td {
       border: 1px solid #555;
-      padding: 10px 15px;
+      padding: 10px 12px;
       color: #fff;
     }
 
-    input[type="number"], input[type="text"] {
-      width: 60px;
+    input[type="number"] {
+      width: 50px;
       padding: 5px;
       background-color: #111;
       border: 1px solid #777;
       color: white;
       text-align: center;
+      border-radius: 4px;
     }
 
     .button {
@@ -57,6 +87,7 @@
     .output {
       margin-top: 20px;
       font-size: 1.1em;
+      word-wrap: break-word;
     }
 
     .success {
@@ -67,18 +98,51 @@
       color: #ff5e5e;
     }
 
-    .tables {
-      display: flex;
-      justify-content: center;
-      gap: 50px;
-      flex-wrap: wrap;
-    }
-
     caption {
       caption-side: top;
       padding: 8px;
       font-weight: bold;
       color: #00ffcc;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 768px) {
+      table {
+        font-size: 0.9rem;
+      }
+      input[type="number"] {
+        width: 40px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.6rem;
+      }
+
+      .tables {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      table {
+        width: 95%;
+        overflow-x: auto;
+        display: block;
+      }
+
+      th, td {
+        padding: 6px;
+      }
+
+      input[type="number"] {
+        width: 36px;
+        padding: 3px;
+      }
+
+      .button {
+        width: 80%;
+      }
     }
   </style>
 </head>
@@ -87,7 +151,7 @@
   <h1>Deadlock Detection</h1>
 
   <div>
-    <label for="available">Available Resources (space-separated):</label><br>
+    <label for="available">Available Resources (space-separated):</label>
     <input type="text" id="available" placeholder="e.g. 3 2 2">
   </div>
 
@@ -108,7 +172,7 @@
         <tr><td>P2</td><td><input type="number" min="0" value="0"></td><td><input type="number" min="0" value="0"></td><td><input type="number" min="0" value="0"></td></tr>
         <tr><td>P3</td><td><input type="number" min="0" value="0"></td><td><input type="number" min="0" value="0"></td><td><input type="number" min="0" value="0"></td></tr>
         <tr><td>P4</td><td><input type="number" min="0" value="0"></td><td><input type="number" min="0" value="0"></td><td><input type="number" min="0" value="0"></td></tr>
-      </tbody>>
+      </tbody>
     </table>
 
     <table id="requestTable">
@@ -151,8 +215,8 @@
         Array.from(row.querySelectorAll("input"), input => Number(input.value) || 0)
       );
 
-      const n = alloc.length;      // processes
-      const m = available.length;  // resources
+      const n = alloc.length;
+      const m = available.length;
       const completed = Array(n).fill(false);
       let done = 0;
       let safeSequence = [];
