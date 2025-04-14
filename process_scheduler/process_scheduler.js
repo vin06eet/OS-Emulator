@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update timeQuantum when changed
     timeQuantumInput.addEventListener('change', function() {
-      timeQuantum = parseInt(this.value)-1 || 1;
+    timeQuantum = Math.max(0, parseInt(this.value || 1) - 1);
       if (timeQuantum < 1) {
         timeQuantum = 1;
         this.value = 1;
