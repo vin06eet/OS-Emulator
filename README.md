@@ -20,6 +20,7 @@ Extra Modules not in Lab Syllabus:
 - **Inter Process Communication**
 - **Command Line Interface**
 - **Real Time Operating System**
+- **Memory Management Unit**
 
 ## Link To Website
 
