@@ -237,119 +237,124 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function allocateContiguous() {
-        // For contiguous allocation, we need to find contiguous free blocks
         for (let file of files) {
-            let allocated = false;
-            
-            for (let startBlock = 0; startBlock <= diskBlocks.length - file.size; startBlock++) {
-                // Check if we have enough contiguous free blocks starting at startBlock
-                let hasEnoughSpace = true;
-                
-                for (let j = 0; j < file.size; j++) {
-                    if (diskBlocks[startBlock + j].allocated) {
-                        hasEnoughSpace = false;
-                        break;
-                    }
-                }
-                
-                if (hasEnoughSpace) {
-                    // Allocate contiguous blocks
-                    for (let j = 0; j < file.size; j++) {
-                        diskBlocks[startBlock + j].allocated = true;
-                        diskBlocks[startBlock + j].fileId = file.id;
-                        file.blocks.push(startBlock + j);
-                    }
-                    
-                    allocated = true;
-                    break;
+            let startBlock = parseInt(prompt(`Enter starting block for ${file.name}:`));
+            let endBlock = parseInt(prompt(`Enter ending block for ${file.name}:`));
+    
+            if (isNaN(startBlock) || isNaN(endBlock) || startBlock < 0 || endBlock >= diskBlocks.length || startBlock > endBlock) {
+                alert("Invalid block range.");
+                return false;
+            }
+    
+            let size = endBlock - startBlock + 1;
+            if (size !== file.size) {
+                alert(`Block range size (${size}) does not match file size (${file.size}).`);
+                return false;
+            }
+    
+            // Check if all blocks in range are free
+            for (let i = startBlock; i <= endBlock; i++) {
+                if (diskBlocks[i].allocated) {
+                    alert(`Block ${i} is already allocated. Choose another range.`);
+                    return false;
                 }
             }
-            
-            if (!allocated) {
-                alert(`Could not allocate contiguous space for File ${file.id + 1}. Although there are enough free blocks, they are not contiguous.`);
-                resetSimulation();
-                return false;
+    
+            // Allocate blocks
+            for (let i = startBlock; i <= endBlock; i++) {
+                diskBlocks[i].allocated = true;
+                diskBlocks[i].fileId = file.id;
+                file.blocks.push(i);
             }
         }
         return true;
     }
-
+    
     function allocateLinked() {
-        // For linked allocation, blocks can be anywhere on disk
         for (let file of files) {
-            let remainingBlocks = file.size;
-            let lastBlock = null;
-            
-            // Find free blocks and link them
-            for (let i = 0; i < diskBlocks.length && remainingBlocks > 0; i++) {
-                if (!diskBlocks[i].allocated) {
-                    diskBlocks[i].allocated = true;
-                    diskBlocks[i].fileId = file.id;
-                    file.blocks.push(i);
-                    
-                    if (lastBlock !== null) {
-                        diskBlocks[lastBlock].nextBlock = i;
-                    }
-                    
-                    lastBlock = i;
-                    remainingBlocks--;
+            let blockChainInput = prompt(`Enter ${file.size} space-separated block indices for ${file.name} (in order):`);
+            if (!blockChainInput) return false;
+    
+            let blockIndices = blockChainInput.split(" ").map(Number);
+    
+            if (blockIndices.length !== file.size) {
+                alert(`You must enter exactly ${file.size} blocks.`);
+                return false;
+            }
+    
+            for (let i = 0; i < blockIndices.length; i++) {
+                let index = blockIndices[i];
+                if (isNaN(index) || index < 0 || index >= diskBlocks.length) {
+                    alert(`Invalid block index: ${index}`);
+                    return false;
+                }
+                if (diskBlocks[index].allocated) {
+                    alert(`Block ${index} is already allocated.`);
+                    return false;
                 }
             }
-            
-            if (remainingBlocks > 0) {
-                alert(`Could not allocate space for File ${file.id + 1}`);
-                resetSimulation();
-                return false;
+    
+            // Allocate and link blocks
+            for (let i = 0; i < blockIndices.length; i++) {
+                const idx = blockIndices[i];
+                diskBlocks[idx].allocated = true;
+                diskBlocks[idx].fileId = file.id;
+                if (i < blockIndices.length - 1) {
+                    diskBlocks[idx].nextBlock = blockIndices[i + 1];
+                }
+                file.blocks.push(idx);
             }
         }
         return true;
     }
-
     function allocateIndexed() {
-        // For indexed allocation, allocate an index block first, then data blocks
         for (let file of files) {
-            // Find a free block for the index
-            let indexBlock = -1;
-            
-            for (let i = 0; i < diskBlocks.length; i++) {
-                if (!diskBlocks[i].allocated) {
-                    indexBlock = i;
-                    diskBlocks[i].allocated = true;
-                    diskBlocks[i].fileId = file.id;
-                    diskBlocks[i].isIndex = true;
-                    break;
-                }
-            }
-            
-            if (indexBlock === -1) {
-                alert(`Could not allocate index block for File ${file.id + 1}`);
-                resetSimulation();
+            let indexBlock = parseInt(prompt(`Enter index block number for ${file.name}:`));
+            if (isNaN(indexBlock) || indexBlock < 0 || indexBlock >= diskBlocks.length) {
+                alert("Invalid index block number.");
                 return false;
             }
-            
-            // Store index block
+            if (diskBlocks[indexBlock].allocated) {
+                alert(`Block ${indexBlock} is already allocated.`);
+                return false;
+            }
+    
+            let dataBlocksInput = prompt(`Enter ${file.size} space-separated data block numbers for ${file.name}:`);
+            if (!dataBlocksInput) return false;
+    
+            let dataIndices = dataBlocksInput.split(" ").map(Number);
+            if (dataIndices.length !== file.size) {
+                alert(`You must enter exactly ${file.size} data blocks.`);
+                return false;
+            }
+    
+            for (let idx of dataIndices) {
+                if (isNaN(idx) || idx < 0 || idx >= diskBlocks.length) {
+                    alert(`Invalid block number: ${idx}`);
+                    return false;
+                }
+                if (diskBlocks[idx].allocated) {
+                    alert(`Block ${idx} is already allocated.`);
+                    return false;
+                }
+            }
+    
+            // Allocate index block
+            diskBlocks[indexBlock].allocated = true;
+            diskBlocks[indexBlock].fileId = file.id;
+            diskBlocks[indexBlock].isIndex = true;
             file.indexBlock = indexBlock;
-            
-            // Find free blocks for data
-            let dataBlocks = 0;
-            
-            for (let i = 0; i < diskBlocks.length && dataBlocks < file.size; i++) {
-                if (!diskBlocks[i].allocated) {
-                    diskBlocks[i].allocated = true;
-                    diskBlocks[i].fileId = file.id;
-                    file.blocks.push(i);
-                    dataBlocks++;
-                }
-            }
-            
-            if (dataBlocks < file.size) {
-                alert(`Could not allocate data blocks for File ${file.id + 1}`);
-                resetSimulation();
-                return false;
+    
+            // Allocate data blocks
+            for (let idx of dataIndices) {
+                diskBlocks[idx].allocated = true;
+                diskBlocks[idx].fileId = file.id;
+                file.blocks.push(idx);
             }
         }
         return true;
     }
+        
 
     function renderDiskBlocks() {
         diskContainer.innerHTML = '';
