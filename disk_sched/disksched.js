@@ -17,6 +17,8 @@ class DiskScheduler {
 
     initializeElements() {
         this.algorithmSelect = document.getElementById('algorithm');
+        this.directionSelect = document.getElementById('direction');
+        this.directionSelector = document.getElementById('directionSelector');
         this.initialHeadInput = document.getElementById('initialHead');
         this.newRequestInput = document.getElementById('newRequest');
         this.addRequestButton = document.getElementById('addRequest');
@@ -40,12 +42,12 @@ class DiskScheduler {
         });
 
         this.addRequestButton.addEventListener('click', () => {
-            const newRequest = parseInt(this.newRequestInput.value);
-            if (!isNaN(newRequest) && newRequest >= 0 && newRequest <= 199) {
-                this.requests.push(newRequest);
-                this.updateRequestsList();
-                this.updateVisualization();
-                this.newRequestInput.value = '';
+            this.addNewRequest();
+        });
+
+        this.newRequestInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                this.addNewRequest();
             }
         });
 
@@ -53,7 +55,15 @@ class DiskScheduler {
         this.nextStepButton.addEventListener('click', () => this.handleNextStep());
         this.playAnimationButton.addEventListener('click', () => this.handlePlayAnimation());
         this.resetAnimationButton.addEventListener('click', () => this.handleResetAnimation());
-        this.algorithmSelect.addEventListener('change', () => this.updateVisualization());
+        this.algorithmSelect.addEventListener('change', () => {
+            // Show/hide direction selector based on algorithm
+            const showDirection = ['SCAN', 'CSCAN', 'LOOK', 'CLOOK'].includes(this.algorithmSelect.value);
+            this.directionSelector.style.display = showDirection ? 'block' : 'none';
+            this.updateVisualization();
+        });
+        this.directionSelect.addEventListener('change', () => {
+            this.updateVisualization();
+        });
     }
 
     createDiskTrack() {
@@ -133,44 +143,87 @@ class DiskScheduler {
                 const requestsRight = remainingRequests.filter(req => req >= currentHead);
                 const requestsLeft = remainingRequests.filter(req => req < currentHead).reverse();
                 
-                requestsRight.forEach(request => {
-                    const distance = Math.abs(currentHead - request);
-                    seekTime += distance;
-                    currentHead = request;
-                    path.push(currentHead);
-                    steps.push({
-                        head: currentHead,
-                        request,
-                        distance,
-                        totalSeekTime: seekTime
+                if (this.directionSelect.value === 'right') {
+                    // Right to left traversal
+                    requestsRight.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
                     });
-                });
 
-                if (currentHead !== 199) {
-                    const distance = 199 - currentHead;
-                    seekTime += distance;
-                    currentHead = 199;
-                    path.push(currentHead);
-                    steps.push({
-                        head: currentHead,
-                        request: null,
-                        distance,
-                        totalSeekTime: seekTime
+                    if (currentHead !== 199) {
+                        const distance = 199 - currentHead;
+                        seekTime += distance;
+                        currentHead = 199;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request: null,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    }
+
+                    requestsLeft.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    });
+                } else {
+                    // Left to right traversal
+                    requestsLeft.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    });
+
+                    if (currentHead !== 0) {
+                        const distance = currentHead;
+                        seekTime += distance;
+                        currentHead = 0;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request: null,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    }
+
+                    requestsRight.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
                     });
                 }
-
-                requestsLeft.forEach(request => {
-                    const distance = Math.abs(currentHead - request);
-                    seekTime += distance;
-                    currentHead = request;
-                    path.push(currentHead);
-                    steps.push({
-                        head: currentHead,
-                        request,
-                        distance,
-                        totalSeekTime: seekTime
-                    });
-                });
                 break;
 
             case 'CSCAN':
@@ -178,59 +231,109 @@ class DiskScheduler {
                 const rightRequests = remainingRequests.filter(req => req >= currentHead);
                 const leftRequests = remainingRequests.filter(req => req < currentHead);
                 
-                // First serve all requests to the right until disk end
-                rightRequests.forEach(request => {
-                    const distance = Math.abs(currentHead - request);
-                    seekTime += distance;
-                    currentHead = request;
+                if (this.directionSelect.value === 'right') {
+                    // Right to left traversal
+                    rightRequests.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    });
+
+                    if (currentHead !== 199) {
+                        const distance = 199 - currentHead;
+                        seekTime += distance;
+                        currentHead = 199;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request: null,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    }
+
+                    const returnDistance = 199;
+                    seekTime += returnDistance;
+                    currentHead = 0;
                     path.push(currentHead);
                     steps.push({
                         head: currentHead,
-                        request,
-                        distance,
+                        request: null,
+                        distance: returnDistance,
                         totalSeekTime: seekTime
                     });
-                });
 
-                // Move to the end of disk (199)
-                if (currentHead !== 199) {
-                    const distance = 199 - currentHead;
-                    seekTime += distance;
+                    leftRequests.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    });
+                } else {
+                    // Left to right traversal
+                    leftRequests.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    });
+
+                    if (currentHead !== 0) {
+                        const distance = currentHead;
+                        seekTime += distance;
+                        currentHead = 0;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request: null,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    }
+
+                    const returnDistance = 199;
+                    seekTime += returnDistance;
                     currentHead = 199;
                     path.push(currentHead);
                     steps.push({
                         head: currentHead,
                         request: null,
-                        distance,
+                        distance: returnDistance,
                         totalSeekTime: seekTime
+                    });
+
+                    rightRequests.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
                     });
                 }
-
-                // Quick return to beginning (0) - add the distance but don't serve requests
-                const returnDistance = 199;  // From 199 to 0
-                seekTime += returnDistance;
-                currentHead = 0;
-                path.push(currentHead);
-                steps.push({
-                    head: currentHead,
-                    request: null,
-                    distance: returnDistance,
-                    totalSeekTime: seekTime
-                });
-
-                // Then serve all requests from the beginning
-                leftRequests.forEach(request => {
-                    const distance = Math.abs(currentHead - request);
-                    seekTime += distance;
-                    currentHead = request;
-                    path.push(currentHead);
-                    steps.push({
-                        head: currentHead,
-                        request,
-                        distance,
-                        totalSeekTime: seekTime
-                    });
-                });
                 break;
 
             case 'LOOK':
@@ -238,31 +341,61 @@ class DiskScheduler {
                 const rightLook = remainingRequests.filter(req => req >= currentHead);
                 const leftLook = remainingRequests.filter(req => req < currentHead).reverse();
                 
-                rightLook.forEach(request => {
-                    const distance = Math.abs(currentHead - request);
-                    seekTime += distance;
-                    currentHead = request;
-                    path.push(currentHead);
-                    steps.push({
-                        head: currentHead,
-                        request,
-                        distance,
-                        totalSeekTime: seekTime
+                if (this.directionSelect.value === 'right') {
+                    // Right to left traversal
+                    rightLook.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
                     });
-                });
 
-                leftLook.forEach(request => {
-                    const distance = Math.abs(currentHead - request);
-                    seekTime += distance;
-                    currentHead = request;
-                    path.push(currentHead);
-                    steps.push({
-                        head: currentHead,
-                        request,
-                        distance,
-                        totalSeekTime: seekTime
+                    leftLook.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
                     });
-                });
+                } else {
+                    // Left to right traversal
+                    leftLook.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    });
+
+                    rightLook.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
+                    });
+                }
                 break;
 
             case 'CLOOK':
@@ -270,38 +403,54 @@ class DiskScheduler {
                 const rightCLook = remainingRequests.filter(req => req >= currentHead);
                 const leftCLook = remainingRequests.filter(req => req < currentHead);
                 
-                // First serve all requests to the right until highest request
-                rightCLook.forEach(request => {
-                    const distance = Math.abs(currentHead - request);
-                    seekTime += distance;
-                    currentHead = request;
-                    path.push(currentHead);
-                    steps.push({
-                        head: currentHead,
-                        request,
-                        distance,
-                        totalSeekTime: seekTime
-                    });
-                });
-
-                if (leftCLook.length > 0) {
-                    // Add the distance from highest request to lowest request
-                    const highestRequest = currentHead;  // This will be the last request served
-                    const lowestRequest = Math.min(...leftCLook);
-                    const jumpDistance = highestRequest - lowestRequest;
-                    seekTime += jumpDistance;
-                    
-                    // Jump to the lowest request
-                    currentHead = lowestRequest;
-                    path.push(currentHead);
-                    steps.push({
-                        head: currentHead,
-                        request: null,
-                        distance: jumpDistance,
-                        totalSeekTime: seekTime
+                if (this.directionSelect.value === 'right') {
+                    // Right to left traversal
+                    rightCLook.forEach(request => {
+                        const distance = Math.abs(currentHead - request);
+                        seekTime += distance;
+                        currentHead = request;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request,
+                            distance,
+                            totalSeekTime: seekTime
+                        });
                     });
 
-                    // Then serve all remaining requests from lowest to highest
+                    if (leftCLook.length > 0) {
+                        // Add the distance from highest request to lowest request
+                        const highestRequest = currentHead;  // This will be the last request served
+                        const lowestRequest = Math.min(...leftCLook);
+                        const jumpDistance = highestRequest - lowestRequest;
+                        seekTime += jumpDistance;
+                        
+                        // Jump to the lowest request
+                        currentHead = lowestRequest;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request: null,
+                            distance: jumpDistance,
+                            totalSeekTime: seekTime
+                        });
+
+                        // Then serve all remaining requests from lowest to highest
+                        leftCLook.forEach(request => {
+                            const distance = Math.abs(currentHead - request);
+                            seekTime += distance;
+                            currentHead = request;
+                            path.push(currentHead);
+                            steps.push({
+                                head: currentHead,
+                                request,
+                                distance,
+                                totalSeekTime: seekTime
+                            });
+                        });
+                    }
+                } else {
+                    // Left to right traversal
                     leftCLook.forEach(request => {
                         const distance = Math.abs(currentHead - request);
                         seekTime += distance;
@@ -314,6 +463,38 @@ class DiskScheduler {
                             totalSeekTime: seekTime
                         });
                     });
+
+                    if (rightCLook.length > 0) {
+                        // Add the distance from lowest request to highest request
+                        const lowestRequest = currentHead;  // This will be the last request served
+                        const highestRequest = Math.max(...rightCLook);
+                        const jumpDistance = highestRequest - lowestRequest;
+                        seekTime += jumpDistance;
+                        
+                        // Jump to the highest request
+                        currentHead = highestRequest;
+                        path.push(currentHead);
+                        steps.push({
+                            head: currentHead,
+                            request: null,
+                            distance: jumpDistance,
+                            totalSeekTime: seekTime
+                        });
+
+                        // Then serve all remaining requests from highest to lowest
+                        rightCLook.reverse().forEach(request => {
+                            const distance = Math.abs(currentHead - request);
+                            seekTime += distance;
+                            currentHead = request;
+                            path.push(currentHead);
+                            steps.push({
+                                head: currentHead,
+                                request,
+                                distance,
+                                totalSeekTime: seekTime
+                            });
+                        });
+                    }
                 }
                 break;
         }
@@ -577,6 +758,16 @@ class DiskScheduler {
         this.currentRequestSpan.textContent = '-';
         this.distanceMovedSpan.textContent = '0';
         this.totalSeekTimeSpan.textContent = '0';
+    }
+
+    addNewRequest() {
+        const newRequest = parseInt(this.newRequestInput.value);
+        if (!isNaN(newRequest) && newRequest >= 0 && newRequest <= 199) {
+            this.requests.push(newRequest);
+            this.updateRequestsList();
+            this.updateVisualization();
+            this.newRequestInput.value = '';
+        }
     }
 }
 
