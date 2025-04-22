@@ -1,6 +1,5 @@
 // Interprocess Communication Simulator
 
-// DOM Elements
 const themeSwitch = document.getElementById('theme-switch');
 const processNameInput = document.getElementById('process-name');
 const processColorInput = document.getElementById('process-color');
@@ -27,7 +26,6 @@ const processDetailsModal = document.getElementById('process-details-modal');
 const processDetailsContent = document.getElementById('process-details-content');
 const closeModal = document.querySelector('.close-modal');
 
-// State
 let processes = [];
 let channels = [];
 let messages = [];
@@ -441,46 +439,26 @@ function sendMessage() {
 function sendMessageThroughChannel(message) {
     const channel = getChannelById(message.channelId);
     if (!channel) return;
-    
     const sourceProcess = getProcessById(channel.sourceId);
     const targetProcess = getProcessById(channel.targetId);
-    
     message.status = 'sending';
-    
-    // Calculate transmission time based on message size, channel bandwidth, latency, and simulation speed
     const transmissionTime = (message.size / channel.bandwidth) * 1000 + channel.latency;
     const adjustedTime = transmissionTime / simulationSpeed;
-    
-    // Animate message transmission
     animateMessageTransmission(sourceProcess, targetProcess, adjustedTime, channel.type);
-    
-    // Deliver the message after the transmission time
     setTimeout(() => {
         message.status = 'delivered';
         message.deliveredAt = new Date();
-        
-        // Update target process
         targetProcess.receiveMessage(message);
-        
-        // Log
         addLogEntry(`Message delivered to "${targetProcess.name}" (${(new Date() - message.createdAt) / 1000}s)`);
-        
-        // Update visualization
         updateVisualization();
     }, adjustedTime);
 }
 
-// Visualization
 function updateVisualization() {
-    // Clear the SVG
     visualizationSvg.innerHTML = '';
-    
-    // Get SVG dimensions
     const svgRect = visualizationSvg.getBoundingClientRect();
     const width = svgRect.width;
     const height = svgRect.height;
-    
-    // Position processes in a circle
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) * 0.35;
@@ -488,11 +466,8 @@ function updateVisualization() {
     processes.forEach((process, index) => {
         const angle = (index / processes.length) * 2 * Math.PI;
         const x = centerX + radius * Math.cos(angle);
-        const y = centerY + radius * Math.sin(angle);
-        
+        const y = centerY + radius * Math.sin(angle);     
         process.updatePosition(x, y);
-        
-        // Draw process node
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         circle.setAttribute('cx', x);
         circle.setAttribute('cy', y);
@@ -500,20 +475,14 @@ function updateVisualization() {
         circle.setAttribute('fill', process.color);
         circle.setAttribute('class', 'process-node');
         circle.setAttribute('data-id', process.id);
-        
-        // Add pulse animation if process is busy
         if (process.status === 'busy') {
             circle.classList.add('pulse');
         }
-        
-        // Add click event
         circle.addEventListener('click', () => {
             showProcessDetails(process.id);
         });
         
         visualizationSvg.appendChild(circle);
-        
-        // Draw process label
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('x', x);
         text.setAttribute('y', y);
@@ -523,19 +492,14 @@ function updateVisualization() {
         visualizationSvg.appendChild(text);
     });
     
-    // Draw channels
     channels.forEach(channel => {
         const sourceProcess = getProcessById(channel.sourceId);
         const targetProcess = getProcessById(channel.targetId);
         
         if (!sourceProcess || !targetProcess) return;
-        
-        // Calculate path
         const dx = targetProcess.x - sourceProcess.x;
         const dy = targetProcess.y - sourceProcess.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // Normalize direction vector
         const nx = dx / distance;
         const ny = dy / distance;
         

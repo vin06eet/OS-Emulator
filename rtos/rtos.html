@@ -290,6 +290,7 @@
       background-color: var(--light);
       border-radius: 0.25rem;
       overflow: hidden;
+      position: relative;
     }
     
     .gantt-task {
@@ -300,6 +301,20 @@
       color: white;
       font-size: 0.75rem;
       font-weight: 500;
+      position: absolute;
+    }
+
+    .gantt-time-markers {
+      display: flex;
+      margin-left: 100px;
+      margin-bottom: 0.25rem;
+    }
+
+    .gantt-time-marker {
+      flex: 1;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--gray);
     }
     
     .memory-chart {
@@ -436,7 +451,11 @@
       
       <div class="gantt-chart">
         <h2>Task Scheduling (Gantt Chart)</h2>
+        <div class="gantt-time-markers" id="gantt-time-markers">
+          <!-- Time markers will be added dynamically -->
+        </div>
         <div id="gantt-container" class="gantt-container">
+          <!-- Task rows will be added dynamically -->
         </div>
       </div>
       
@@ -460,7 +479,7 @@
         this.tasks = [];
         this.runningTasks = [null, null]; 
         this.taskHistory = []; 
-        
+        this.timeScale = 5000; // Maximum time to show on gantt chart initially (will auto-adjust)
         
         this.timeDisplay = document.getElementById('system-time');
         this.cpuUtil = document.getElementById('cpu-util');
@@ -470,6 +489,7 @@
         this.tasksList = document.getElementById('tasks-list');
         this.memoryBlocks = document.getElementById('memory-blocks');
         this.ganttContainer = document.getElementById('gantt-container');
+        this.ganttTimeMarkers = document.getElementById('gantt-time-markers');
         this.core1 = document.getElementById('core-1');
         this.core2 = document.getElementById('core-2');
         
@@ -479,16 +499,34 @@
         this.taskForm = document.getElementById('task-form');
         
         this.initMemoryBlocks();
+        this.initGanttTimeMarkers();
 
         this.bindEvents();
       }
       
       initMemoryBlocks() {
-     
         for (let i = 0; i < 40; i++) {
           const block = document.createElement('div');
           block.className = 'memory-block';
           this.memoryBlocks.appendChild(block);
+        }
+      }
+      
+      initGanttTimeMarkers() {
+        this.updateGanttTimeMarkers();
+      }
+      
+      updateGanttTimeMarkers() {
+        this.ganttTimeMarkers.innerHTML = '';
+        
+        const timeMarkerCount = 10;
+        const interval = this.timeScale / timeMarkerCount;
+        
+        for (let i = 0; i <= timeMarkerCount; i++) {
+          const marker = document.createElement('div');
+          marker.className = 'gantt-time-marker';
+          marker.textContent = (i * interval) + 'ms';
+          this.ganttTimeMarkers.appendChild(marker);
         }
       }
       
@@ -522,10 +560,12 @@
         this.runningTasks = [null, null];
         this.taskHistory = [];
         this.usedMemory = 0;
+        this.timeScale = 5000;
 
         this.updateUI();
         this.clearCores();
         this.ganttContainer.innerHTML = '';
+        this.updateGanttTimeMarkers();
         this.tasksList.innerHTML = '';
 
         const memoryBlocks = document.querySelectorAll('.memory-block');
@@ -553,7 +593,8 @@
           memoryRequired: parseInt(memoryInput.value),
           state: 'waiting',
           startTime: null,
-          completionTime: null
+          completionTime: null,
+          executionIntervals: [] // Track execution periods for gantt chart
         };
 
         if (this.usedMemory + task.memoryRequired <= this.totalMemory) {
@@ -563,6 +604,13 @@
           this.addTaskToList(task);
 
           this.addTaskToGantt(task);
+
+          // Update timeScale if the burst time is longer
+          if (task.burstTime > this.timeScale * 0.8) {
+            this.timeScale = Math.ceil(task.burstTime * 1.5 / 1000) * 1000;
+            this.updateGanttTimeMarkers();
+            this.refreshGanttChart();
+          }
 
           nameInput.value = '';
           priorityInput.value = 'medium';
@@ -580,7 +628,6 @@
       }
       
       sortTasksByPriority() {
-
         const priorityMap = { high: 3, medium: 2, low: 1 };
         
         this.tasks.sort((a, b) => {
@@ -616,10 +663,25 @@
         
         row.innerHTML = `
           <div class="gantt-label">${task.name}</div>
-          <div class="gantt-timeline"></div>
+          <div class="gantt-timeline" id="gantt-timeline-${task.id}"></div>
         `;
         
         this.ganttContainer.appendChild(row);
+      }
+
+      refreshGanttChart() {
+        // Clear all existing execution blocks in gantt chart
+        const timelines = document.querySelectorAll('.gantt-timeline');
+        timelines.forEach(timeline => {
+          timeline.innerHTML = '';
+        });
+
+        // Redraw execution blocks based on execution intervals
+        this.tasks.forEach(task => {
+          task.executionIntervals.forEach(interval => {
+            this.drawGanttBlock(task, interval.core, interval.start, interval.end);
+          });
+        });
       }
       
       updateTaskInList(task) {
@@ -647,37 +709,43 @@
         }
       }
       
-      updateGanttChart(task, coreIndex, timeStart, timeEnd) {
-        const ganttRow = document.getElementById(`gantt-task-${task.id}`);
-        if (ganttRow) {
-          const timeline = ganttRow.querySelector('.gantt-timeline');
-          const taskBlock = document.createElement('div');
-          taskBlock.className = 'gantt-task';
+      drawGanttBlock(task, coreIndex, timeStart, timeEnd) {
+        const timeline = document.getElementById(`gantt-timeline-${task.id}`);
+        if (!timeline) return;
+        
+        const taskBlock = document.createElement('div');
+        taskBlock.className = 'gantt-task';
 
-          const color = coreIndex === 0 ? 'var(--primary)' : 'var(--secondary)';
-          taskBlock.style.backgroundColor = color;
+        const color = coreIndex === 0 ? 'var(--primary)' : 'var(--secondary)';
+        taskBlock.style.backgroundColor = color;
 
-          const totalTimeWidth = 100;
-          const width = ((timeEnd - timeStart) / this.systemTime) * totalTimeWidth;
-          taskBlock.style.width = `${width}%`;
-
-          const marginLeft = (timeStart / this.systemTime) * totalTimeWidth;
-          taskBlock.style.marginLeft = `${marginLeft}%`;
-          
-          timeline.appendChild(taskBlock);
+        const left = (timeStart / this.timeScale) * 100;
+        const width = ((timeEnd - timeStart) / this.timeScale) * 100;
+        
+        taskBlock.style.left = `${left}%`;
+        taskBlock.style.width = `${width}%`;
+        taskBlock.title = `${task.name} (Core ${coreIndex + 1}): ${timeStart}ms - ${timeEnd}ms`;
+        
+        if (width > 5) {
+          taskBlock.textContent = `Core ${coreIndex + 1}`;
         }
+        
+        timeline.appendChild(taskBlock);
       }
       
       scheduleTasks() {
-
         const waitingTasks = this.tasks.filter(task => task.state === 'waiting');
 
         for (let i = 0; i < this.runningTasks.length; i++) {
           if (this.runningTasks[i] === null && waitingTasks.length > 0) {
-
             const taskToRun = waitingTasks.shift();
             taskToRun.state = 'running';
             taskToRun.startTime = this.systemTime;
+            
+            // Record the start of an execution interval
+            taskToRun.currentExecutionStart = this.systemTime;
+            taskToRun.currentExecutionCore = i;
+            
             this.runningTasks[i] = taskToRun;
 
             this.updateTaskInList(taskToRun);
@@ -721,7 +789,6 @@
       }
       
       updateMemoryUI() {
-
         this.memoryUsage.textContent = `${this.usedMemory}/${this.totalMemory} KB`;
 
         const memoryBlocks = document.querySelectorAll('.memory-block');
@@ -737,7 +804,6 @@
       }
       
       updateUI() {
-  
         this.timeDisplay.textContent = this.systemTime;
 
         const runningTasksCount = this.runningTasks.filter(task => task !== null).length;
@@ -748,6 +814,13 @@
         this.tasksWaiting.textContent = this.tasks.filter(task => task.state === 'waiting').length;
 
         this.updateMemoryUI();
+        
+        // Auto-extend timeScale if system time approaches it
+        if (this.systemTime > this.timeScale * 0.8) {
+          this.timeScale = Math.ceil(this.systemTime * 1.5 / 1000) * 1000;
+          this.updateGanttTimeMarkers();
+          this.refreshGanttChart();
+        }
       }
       
       tick() {
@@ -759,14 +832,26 @@
           const task = this.runningTasks[i];
           
           if (task) {
-
             task.remainingTime -= 100;
 
             if (task.remainingTime <= 0) {
               task.state = 'completed';
               task.completionTime = this.systemTime;
-
-              this.updateGanttChart(task, i, task.startTime, task.completionTime);
+              
+              // Record the execution interval
+              task.executionIntervals.push({
+                core: task.currentExecutionCore,
+                start: task.currentExecutionStart,
+                end: this.systemTime
+              });
+              
+              // Draw this execution block on the gantt chart
+              this.drawGanttBlock(
+                task, 
+                task.currentExecutionCore, 
+                task.currentExecutionStart, 
+                this.systemTime
+              );
 
               this.usedMemory -= task.memoryRequired;
               if (this.usedMemory < 0) this.usedMemory = 0;
@@ -775,8 +860,14 @@
 
               this.runningTasks[i] = null;
               this.updateCoreUI(i, null);
-            } else {
               
+              // Add to task history
+              this.taskHistory.push({
+                ...task,
+                turnaroundTime: task.completionTime - task.startTime,
+                waitingTime: (task.completionTime - task.startTime) - task.burstTime
+              });
+            } else {
               this.updateCoreUI(i, task);
               this.updateTaskInList(task);
             }
