@@ -254,8 +254,8 @@
                     <tr>
                         <td>Worst-Fit</td>
                         <td>Slow</td>
-                        <td>Poor</td>
-                        <td>Fewer usable fragments</td>
+                        <td>Poor (generally)</td>
+                        <td>Large fragments</td>
                     </tr>
                 </tbody>
             </table>
@@ -265,7 +265,6 @@
             <h2>Challenges in Contiguous Memory Allocation</h2>
             <ul>
                 <li><strong>External Fragmentation:</strong> Free memory space exists but is not contiguous, making it unusable for large processes.</li>
-                <li><strong>Internal Fragmentation:</strong> Allocated memory may be slightly larger than requested, resulting in wasted space.</li>
                 <li><strong>Compaction:</strong> The process of moving all processes to one end of memory to create a large contiguous free block.</li>
                 <li><strong>Memory Protection:</strong> Ensuring processes can only access their allocated memory.</li>
             </ul>
