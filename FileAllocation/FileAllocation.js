@@ -223,6 +223,10 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'indexed':
                 allocationSuccess = allocateIndexed();
                 break;
+             case 'multilevel':
+    allocationSuccess = allocateMultilevelIndexed();
+    break;
+
         }
         
         if (!allocationSuccess) {
@@ -354,6 +358,59 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return true;
     }
+
+    function allocateMultilevelIndexed() {
+        for (let file of files) {
+            let mainIndexBlock = parseInt(prompt(`Enter MAIN index block number for ${file.name}:`));
+            if (isNaN(mainIndexBlock) || mainIndexBlock < 0 || mainIndexBlock >= diskBlocks.length || diskBlocks[mainIndexBlock].allocated) {
+                alert("Invalid or already allocated main index block.");
+                return false;
+            }
+    
+            diskBlocks[mainIndexBlock].allocated = true;
+            diskBlocks[mainIndexBlock].fileId = file.id;
+            diskBlocks[mainIndexBlock].isIndex = true;
+            file.indexBlock = mainIndexBlock;
+            file.subIndexes = [];
+    
+            let subCount = Math.ceil(file.size / 4);
+            for (let i = 0; i < subCount; i++) {
+                let subIndex = parseInt(prompt(`Enter SUB index block ${i + 1} for ${file.name}:`));
+                if (isNaN(subIndex) || subIndex < 0 || subIndex >= diskBlocks.length || diskBlocks[subIndex].allocated) {
+                    alert("Invalid or already allocated sub-index block.");
+                    return false;
+                }
+    
+                diskBlocks[subIndex].allocated = true;
+                diskBlocks[subIndex].fileId = file.id;
+                diskBlocks[subIndex].isIndex = true;
+                file.subIndexes.push(subIndex);
+    
+                let blocksInput = prompt(`Enter up to 4 data blocks for sub-index ${i + 1} (space-separated):`);
+                let dataBlocks = blocksInput.split(" ").map(Number);
+    
+                if (dataBlocks.length < 1 || dataBlocks.length > 4) {
+                    alert("Each sub-index must point to 1–4 data blocks.");
+                    return false;
+                }
+    
+                for (let b of dataBlocks) {
+                    if (isNaN(b) || b < 0 || b >= diskBlocks.length || diskBlocks[b].allocated) {
+                        alert(`Invalid or already allocated block: ${b}`);
+                        return false;
+                    }
+                }
+    
+                for (let b of dataBlocks) {
+                    diskBlocks[b].allocated = true;
+                    diskBlocks[b].fileId = file.id;
+                    file.blocks.push(b);
+                }
+            }
+        }
+        return true;
+    }
+       
         
 
     function renderDiskBlocks() {
@@ -520,6 +577,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 html += `</table>`;
                 break;
+
+             case 'multilevel':
+    html += `<p>Multilevel Indexed Allocation: One main index points to sub-index blocks, which point to data blocks.</p>`;
+    html += `<table class="allocation-table">
+                <tr><th>File</th><th>Main Index</th><th>Sub Indexes</th><th>Data Blocks</th></tr>`;
+    for (let file of files) {
+        html += `<tr>
+                    <td>${file.name}</td>
+                    <td>${file.indexBlock}</td>
+                    <td>${file.subIndexes.join(', ')}</td>
+                    <td>${file.blocks.join(', ')}</td>
+                 </tr>`;
+    }
+    html += `</table>`;
+    break;
+
         }
         
         allocationInfo.innerHTML = html;
@@ -535,6 +608,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 return 'Indexed';
             default:
                 return method;
+            case 'multilevel':
+                    return 'Multilevel Indexed';
+                    
         }
     }
 
